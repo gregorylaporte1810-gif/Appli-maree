@@ -226,6 +226,12 @@ body {
   color: var(--ocean-primary);
   font-weight: 600;
 }
+.tide-container { /* Remplace par le nom exact de ta classe principale */
+  width: 95%;          /* Occupe presque toute la largeur (95% de l'écran) */
+  max-width: 550px;    /* Permet d'élargir le bloc par rapport à avant */
+  padding: 20px;       /* Ajoute un peu d'air à l'intérieur du bloc */
+  box-sizing: border-box;
+}
 
 /* --- ADAPTATION GRAND ÉCRAN --- */
 @media (min-width: 600px) {
@@ -248,10 +254,5 @@ body {
   .port-selector {
     width: auto;
   }
-  .tide-container { /* Remplace par le nom exact de ta classe principale */
-  width: 95%;          /* Occupe presque toute la largeur (95% de l'écran) */
-  max-width: 550px;    /* Permet d'élargir le bloc par rapport à avant */
-  padding: 20px;       /* Ajoute un peu d'air à l'intérieur du bloc */
-  box-sizing: border-box;
-}
+
 }
