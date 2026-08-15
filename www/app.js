@@ -71,13 +71,24 @@ async function fetchTideData(portKey) {
 
 // 4. Traitement et mise en forme des données reçues
 function processAndRenderData(data) {
-  const marees = Array.isArray(data)
-    ? data
-    : data.extremas ||
-      data.extremes ||
-      data.data ||
-      data.tides ||
-      Object.values(data).find((val) => Array.isArray(val));
+  console.log("Structure brute reçue :", data);
+
+  // LA CORRECTION EST ICI : On cible 'extrema' au singulier !
+  let marees = data.extrema || data.extremes || data.data;
+
+  // Sécurité : si on ne trouve toujours pas, on cherche intelligemment un tableau qui contient des infos de marées (datetime, height...)
+  if (!marees || !Array.isArray(marees)) {
+    const tousLesTableaux = Object.values(data).filter((val) =>
+      Array.isArray(val),
+    );
+    marees = tousLesTableaux.find(
+      (arr) =>
+        arr.length > 0 &&
+        (arr[0].datetime !== undefined ||
+          arr[0].height !== undefined ||
+          arr[0].type !== undefined),
+    );
+  }
 
   if (!marees || !Array.isArray(marees) || marees.length === 0) {
     console.warn("Impossible de trouver le tableau des marées dans :", data);
@@ -85,6 +96,7 @@ function processAndRenderData(data) {
     return;
   }
 
+  // Fonction utilitaire pour nettoyer et convertir les nombres (gère les virgules françaises)
   function parseVal(val) {
     if (typeof val === "number") return val;
     if (typeof val === "string") {
@@ -118,6 +130,7 @@ function processAndRenderData(data) {
   // 3. Affichage des cartes de la journée
   tideGrid.innerHTML = "";
   marees.slice(0, 4).forEach((item) => {
+    // Détection universelle de l'état (Pleine mer / Basse mer)
     const etatStr = Object.values(item).join(" ").toLowerCase();
     const isHigh =
       etatStr.includes("pleine") ||
@@ -127,6 +140,7 @@ function processAndRenderData(data) {
     const icon = isHigh ? "🏔️" : "🌊";
     const title = isHigh ? "Pleine Mer" : "Basse Mer";
 
+    // Extraction de l'heure
     let time = "--:--";
     const rawDate =
       item.date || item.time || item.datetime || item.dt || item.timestamp;
@@ -149,19 +163,18 @@ function processAndRenderData(data) {
       }
     }
 
-    // Recherche exhaustive de la hauteur dans l'objet
+    // Recherche et conversion sécurisée de la hauteur
     let rawHeight =
       item.hauteur ??
       item.height ??
       item.valeur ??
       item.value ??
       item.niveau ??
-      item.water_level ??
-      item.h ??
-      item.mer;
+      item.water_level;
     let heightNum = parseVal(rawHeight);
 
     if (heightNum === null) {
+      // Parcourt toutes les propriétés pour trouver un nombre cohérent pour une hauteur d'eau
       for (const val of Object.values(item)) {
         const p = parseVal(val);
         if (p !== null && p !== Number(coef) && p >= -5 && p <= 16) {
