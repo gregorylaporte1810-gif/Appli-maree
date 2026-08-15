@@ -6,13 +6,13 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Météo des Marées</title>
-  <link rel="stylesheet" href="/www/style.css">
-  <link rel="manifest" href="/www/manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0284c7">
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/www/sw.js')
+        navigator.serviceWorker.register('./sw.js')
           .then(() => console.log("Service Worker enregistré avec succès"))
           .catch((err) => console.log("Erreur Service Worker", err));
       });
@@ -83,7 +83,7 @@
     </section>
   </main>
 
-  <script src="/www/app.js"></script>
+  <script src="app.js"></script>
 </body>
 
 </html>
