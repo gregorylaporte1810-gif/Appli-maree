@@ -53,20 +53,18 @@ async function fetchTideData(portKey) {
   tideGrid.innerHTML = "";
 
   try {
-    // L'URL de base selon la documentation de api-maree.fr
-    // L'identifiant du port est injecté dynamiquement
-    const url = `https://api-maree.fr/api/v1/tides?port_id=${portInfo.id}&date=${today}`;
+    // Nouvelle URL calquée sur la documentation de la capture d'écran
+    const url = `https://api-maree.fr/tide-extrema?site=${portKey}&from=${today}&to=${today}&tz=Europe/Paris&key=${API_TOKEN}`;
 
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${API_TOKEN}`, // Méthode classique d'authentification
-        Accept: "application/json",
-      },
-    });
+    // L'appel fetch devient beaucoup plus simple, plus besoin de headers
+    const response = await fetch(url);
 
     if (!response.ok) throw new Error(`Erreur réseau : ${response.status}`);
 
     const data = await response.json();
+
+    // Fais un log pour inspecter la structure réelle du JSON reçu !
+    console.log("Données reçues de api-maree :", data);
 
     localStorage.setItem(cacheKey, JSON.stringify(data));
     processAndRenderData(data);
@@ -76,17 +74,20 @@ async function fetchTideData(portKey) {
     nextEvent.textContent = "Vérifie ta clé API";
   }
 }
-
+// 4. Traitement et mise en forme des données reçues
 // 4. Traitement et mise en forme des données reçues
 function processAndRenderData(data) {
-  // On supprime la logique de marnage, l'API nous donne tout !
-  // Attention à vérifier les clés exactes retournées dans ton console.log(data)
+  // Détection automatique du tableau dans le JSON (qu'il s'appelle extrema, data, etc.)
+  const marees = Array.isArray(data) 
+    ? data 
+    : (data.extremas || data.extremes || data.data || Object.values(data).find(val => Array.isArray(val)));
 
-  const marees = data.marees; // À adapter selon le format exact du JSON
-  if (!marees || marees.length === 0) return;
+  if (!marees || marees.length === 0) {
+    console.warn("Aucun tableau de marées trouvé dans l'objet :", data);
+    return;
+  }
 
   // 1. Récupération du coefficient officiel du SHOM
-  // Le coef n'est souvent communiqué que sur les marées hautes
   const pleineMer = marees.find(
     (m) => m.coefficient != null && m.coefficient > 0,
   );
@@ -99,19 +100,19 @@ function processAndRenderData(data) {
   // 3. Affichage des 4 cartes de la journée
   tideGrid.innerHTML = "";
   marees.slice(0, 4).forEach((item) => {
-    // Adapter "Pleine mer" selon la chaîne de caractère renvoyée par le JSON
-    const isHigh = item.etat === "Pleine mer";
+    // Vérifie si l'état indique une pleine mer (souvent "Pleine mer" ou "High")
+    const isHigh = item.etat === "Pleine mer" || item.type === "High";
     const icon = isHigh ? "🏔️" : "🌊";
     const title = isHigh ? "Pleine Mer" : "Basse Mer";
 
     // Formatage de l'heure exacte
-    const time = new Date(item.date).toLocaleTimeString("fr-FR", {
+    const time = new Date(item.date || item.dt * 1000).toLocaleTimeString("fr-FR", {
       hour: "2-digit",
       minute: "2-digit",
     });
 
     // Formatage de la hauteur positive
-    const height = parseFloat(item.hauteur).toFixed(2) + "m";
+    const height = parseFloat(item.hauteur || item.height).toFixed(2) + "m";
 
     const card = document.createElement("div");
     card.classList.add("tide-card");
@@ -160,7 +161,8 @@ function findNearestPort(userLat, userLon) {
   let closestPortKey = null;
   let minDistance = Infinity;
 
-  for (const [key, coords] of Object.entries(PORTS_COORDINATES)) {
+  // Remplacer PORTS_COORDINATES par PORTS_DATA
+for (const [key, coords] of Object.entries(PORTS_DATA)) {
     const dist = getDistanceInKm(userLat, userLon, coords.lat, coords.lon);
     if (dist < minDistance) {
       minDistance = dist;
