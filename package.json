@@ -1,0 +1,10 @@
+{
+  "name": "meteo-marees",
+  "version": "1.0.0",
+  "description": "Application météo des marées",
+  "main": "index.html",
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
+  }
+}

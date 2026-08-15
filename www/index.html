@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Météo des Marées</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0284c7">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(() => console.log("Service Worker enregistré avec succès"))
+          .catch((err) => console.log("Erreur Service Worker", err));
+      });
+    }
+  </script>
+</head>
+
+<body>
+
+  <main class="tide-container">
+    <!-- En-tête : Sélection du port -->
+    <header class="app-header">
+      <h1>🌊 Météo des Marées</h1>
+      <div class="port-selector">
+        <label for="port-select">Port :</label>
+        <select id="port-select">
+          <!-- Manche & Mer du Nord -->
+          <optgroup label="Manche & Nord">
+            <option value="dunkerque">Dunkerque</option>
+            <option value="calais">Calais</option>
+            <option value="le-havre">Le Havre</option>
+            <option value="cherbourg">Cherbourg</option>
+            <option value="granville">Granville</option>
+          </optgroup>
+
+          <!-- Bretagne -->
+          <optgroup label="Bretagne">
+            <option value="saint-malo">Saint-Malo</option>
+            <option value="roscoff">Roscoff</option>
+            <option value="brest">Brest</option>
+            <option value="concarneau">Concarneau</option>
+            <option value="lorient">Lorient</option>
+            <option value="vannes">Vannes / Golfe</option>
+          </optgroup>
+
+          <!-- Côte Atlantique -->
+          <optgroup label="Atlantique">
+            <option value="saint-nazaire">Saint-Nazaire</option>
+            <option value="les-sables-dolonne">Les Sables-d'Olonne</option>
+            <option value="la-rochelle">La Rochelle</option>
+            <option value="royan">Royan</option>
+            <option value="arcachon">Arcachon</option>
+            <option value="biarritz">Biarritz</option>
+          </optgroup>
+        </select>
+        <button id="geo-btn" title="Détecter le port le plus proche">📍</button>
+      </div>
+    </header>
+
+    <!-- Carte résumé du jour -->
+    <section class="summary-card">
+      <div class="coef-badge">
+        <span class="coef-label">Coefficient</span>
+        <span id="coef-value" class="coef-number">85</span>
+      </div>
+      <div class="status-info">
+        <h2 id="current-state">Marée montante ⬆️</h2>
+        <p id="next-event">Prochaine pleine mer à 14:35</p>
+      </div>
+    </section>
+
+    <!-- Grille des horaires de la journée -->
+    <section class="tide-details">
+      <h3>Horaires du jour</h3>
+      <div id="tide-grid" class="tide-grid">
+        <!-- Les cartes Pleine Mer / basse Mer seront injectées par JavaScript -->
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

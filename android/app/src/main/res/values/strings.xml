@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Météo des Marées</string>
+    <string name="title_activity_main">Météo des Marées</string>
+    <string name="package_name">com.meteo.marees</string>
+    <string name="custom_url_scheme">com.meteo.marees</string>
+</resources>
