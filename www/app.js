@@ -6,7 +6,7 @@ const nextEvent = document.getElementById("next-event");
 const tideGrid = document.getElementById("tide-grid");
 
 // Clé API WorldTides (Créer un compte gratuit sur worldtides.info pour avoir ta clé)
-const API_KEY = "8b3747b6-129f-44ed-b822-83768db7c5d5";
+const API_KEY = "1de07a05-3ca5-4fe3-bb2c-4d6474788cd8";
 
 // 2. Base des coordonnées GPS des ports
 const PORTS_COORDINATES = {
@@ -38,13 +38,25 @@ async function fetchTideData(portKey) {
   const coords = PORTS_COORDINATES[portKey];
   if (!coords) return;
 
+  // 1. Clé unique de cache basée sur le port et la date du jour (ex: "marees_saint-malo_2026-08-15")
+  const today = new Date().toISOString().split('T')[0];
+  const cacheKey = `marees_${portKey}_${today}`;
+
+  // 2. Vérification si les données du jour existent déjà dans le navigateur
+  const cachedData = localStorage.getItem(cacheKey);
+  if (cachedData) {
+    console.log("Données chargées depuis le cache local (0 crédit consommé !)");
+    processAndRenderData(JSON.parse(cachedData));
+    return;
+  }
+
   currentState.textContent = "Mise à jour en direct… ⏳";
   nextEvent.textContent = "Connexion à WorldTides";
   coefValue.textContent = "--";
   tideGrid.innerHTML = "";
 
   try {
-    // Remarque : Ajout de &datum=LAT pour avoir des hauteurs toujours positives
+    // 3. Appel de l'API si le cache est vide pour aujourd'hui
     const url = `https://www.worldtides.info/api/v3?heights&extremes&lat=${coords.lat}&lon=${coords.lon}&key=${API_KEY}&datum=LAT`;
     const response = await fetch(url);
 
@@ -53,6 +65,10 @@ async function fetchTideData(portKey) {
     }
 
     const data = await response.json();
+
+    // 4. Sauvegarde de la réponse dans le LocalStorage pour toute la journée
+    localStorage.setItem(cacheKey, JSON.stringify(data));
+
     processAndRenderData(data);
   } catch (error) {
     console.error("Erreur API :", error);
