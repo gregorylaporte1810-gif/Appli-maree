@@ -7,156 +7,345 @@ const tideGrid = document.getElementById("tide-grid");
 
 document.addEventListener("DOMContentLoaded", () => {
   const portSelect = document.getElementById("port-select");
+  portSelect.innerHTML = ""; // Nettoyage au cas où
 
-  // Remplissage automatique du menu déroulant
-  PORTS_DATA.forEach((port) => {
-    const option = document.createElement("option");
-    option.value = port.slug;
-    option.textContent = port.name;
-    portSelect.appendChild(option);
-  });
+  // 1. Regrouper les ports par département
+  const groupedPorts = PORTS_DATA.reduce((acc, port) => {
+    const dept = port.dept || "Autres";
+    if (!acc[dept]) acc[dept] = [];
+    acc[dept].push(port);
+    return acc;
+  }, {});
 
-  // Sélectionner par défaut le premier port ou celui sauvegardé
-  portSelect.value = "roscoff"; // ou ta logique actuelle
+  // 2. Créer les <optgroup> et les <option> associés
+  for (const [deptName, ports] of Object.entries(groupedPorts)) {
+    const optGroup = document.createElement("optgroup");
+    optGroup.label = deptName;
 
-  // Le reste de ton code d'initialisation...
+    ports.forEach((port) => {
+      const option = document.createElement("option");
+      option.value = port.slug;
+      option.textContent = port.name;
+      optGroup.appendChild(option);
+    });
+
+    portSelect.appendChild(optGroup);
+  }
+
+  // 3. Sélectionner par défaut le port sauvegardé ou une valeur par défaut
+  const savedPort = localStorage.getItem("selectedPort") || "roscoff";
+  portSelect.value = savedPort;
+  fetchTideData(savedPort);
 });
 // 2. Base des données des ports avec le slug exact attendu par l'API
 const PORTS_DATA = [
-  { name: "Aber Wrac'h", slug: "aber-wrac-h" },
-  { name: "Anse de Primel", slug: "anse-de-primel" },
-  { name: "Arcachon (Jetée d'Eyrac)", slug: "arcachon-jetee-d-eyrac" },
-  { name: "Arradon", slug: "arradon" },
-  { name: "Arromanches-les-Bains", slug: "arromanches-les-bains" },
-  { name: "Audierne", slug: "audierne" },
-  { name: "Auray (St-Goustan)", slug: "auray-st-goustan" },
-  { name: "Baie de Morlaix - Carantec", slug: "baie-de-morlaix-carantec" },
+  // Calvados (14)
+  {
+    name: "Arromanches-les-Bains",
+    slug: "arromanches-les-bains",
+    dept: "Calvados (14)",
+  },
+  {
+    name: "Courseulles-sur-Mer",
+    slug: "courseulles-sur-mer",
+    dept: "Calvados (14)",
+  },
+  { name: "Dives-sur-Mer", slug: "dives-sur-mer", dept: "Calvados (14)" },
+  { name: "Grandcamp", slug: "grandcamp", dept: "Calvados (14)" },
+  { name: "Honfleur", slug: "honfleur", dept: "Calvados (14)" },
+  { name: "Luc-sur-mer", slug: "luc-sur-mer", dept: "Calvados (14)" },
+  { name: "Ouistreham", slug: "ouistreham", dept: "Calvados (14)" },
+  { name: "Port-en-Bessin", slug: "port-en-bessin", dept: "Calvados (14)" },
+  {
+    name: "Trouville / Deauville",
+    slug: "trouville-deauville",
+    dept: "Calvados (14)",
+  },
+  { name: "Vierville", slug: "vierville", dept: "Calvados (14)" },
+
+  // Charente-Maritime (17)
+  { name: "Cordouan", slug: "cordouan", dept: "Charente-Maritime (17)" },
+  {
+    name: "La Rochelle-Pallice",
+    slug: "la-rochelle-pallice",
+    dept: "Charente-Maritime (17)",
+  },
+  {
+    name: "Pointe de Gatseau",
+    slug: "pointe-de-gatseau",
+    dept: "Charente-Maritime (17)",
+  },
+  { name: "Royan", slug: "royan", dept: "Charente-Maritime (17)" },
+  {
+    name: "Île d'Oléron (La Cotinière)",
+    slug: "ile-d-oleron-la-cotiniere",
+    dept: "Charente-Maritime (17)",
+  },
+  {
+    name: "Île de Ré (Saint-Martin)",
+    slug: "ile-de-re-saint-martin",
+    dept: "Charente-Maritime (17)",
+  },
+
+  // Côtes-d'Armor (22)
   {
     name: "Baie de Saint-Brieuc (Le Légué)",
     slug: "baie-de-saint-brieuc-le-legue",
+    dept: "Côtes-d'Armor (22)",
   },
-  { name: "Barfleur", slug: "barfleur" },
-  { name: "Belle-Île (Le Palais)", slug: "belle-ile-le-palais" },
-  { name: "Berck Plage - Fort Mahon", slug: "berck-plage-fort-mahon" },
-  { name: "Binic", slug: "binic" },
-  { name: "Biscarrosse", slug: "biscarrosse" },
-  { name: "Bordeaux", slug: "bordeaux" },
-  { name: "Boucau-Bayonne / Biarritz", slug: "boucau-bayonne-biarritz" },
-  { name: "Boulogne-sur-Mer", slug: "boulogne-sur-mer" },
-  { name: "Brest", slug: "brest" },
-  { name: "Brignogan-Plage", slug: "brignogan-plage" },
-  { name: "Bénodet", slug: "benodet" },
-  { name: "Calais", slug: "calais" },
-  { name: "Camaret-sur-Mer", slug: "camaret-sur-mer" },
-  { name: "Cancale", slug: "cancale" },
-  { name: "Cap Ferret", slug: "cap-ferret" },
-  { name: "Carteret", slug: "carteret" },
-  { name: "Cayeux-sur-mer", slug: "cayeux-sur-mer" },
-  { name: "Cherbourg", slug: "cherbourg" },
-  { name: "Concarneau", slug: "concarneau" },
-  { name: "Cordouan", slug: "cordouan" },
-  { name: "Courseulles-sur-Mer", slug: "courseulles-sur-mer" },
-  { name: "Dahouet", slug: "dahouet" },
-  { name: "Dieppe", slug: "dieppe" },
-  { name: "Dives-sur-Mer", slug: "dives-sur-mer" },
-  { name: "Diélette", slug: "dielette" },
-  { name: "Douarnenez", slug: "douarnenez" },
-  { name: "Dunkerque", slug: "dunkerque" },
-  { name: "Erquy", slug: "erquy" },
-  { name: "Fouesnant", slug: "fouesnant" },
-  { name: "Fromentine", slug: "fromentine" },
-  { name: "Fécamp", slug: "fecamp" },
-  { name: "Goury", slug: "goury" },
-  { name: "Grandcamp", slug: "grandcamp" },
-  { name: "Granville", slug: "granville" },
-  { name: "Gravelines", slug: "gravelines" },
-  { name: "Honfleur", slug: "honfleur" },
-  { name: "Houat", slug: "houat" },
-  { name: "Hoëdic", slug: "hoedic" },
-  { name: "L'Aber Benoît", slug: "l-aber-benoit" },
-  { name: "L'Aber Ildut - Lanildut", slug: "l-aber-ildut-lanildut" },
-  { name: "La Rochelle-Pallice", slug: "la-rochelle-pallice" },
-  { name: "La Trinité-sur-Mer", slug: "la-trinite-sur-mer" },
-  { name: "Lacanau", slug: "lacanau" },
-  { name: "Le Conquet", slug: "le-conquet" },
-  { name: "Le Croisic", slug: "le-croisic" },
-  { name: "Le Guilvinec", slug: "le-guilvinec" },
-  { name: "Le Havre", slug: "le-havre" },
-  { name: "Le Havre-Antifer", slug: "le-havre-antifer" },
-  { name: "Le Logeo", slug: "le-logeo" },
-  { name: "Le Pouldu", slug: "le-pouldu" },
-  { name: "Le Pouliguen", slug: "le-pouliguen" },
-  { name: "Le Tréport", slug: "le-treport" },
-  { name: "Les Héaux de Bréhat", slug: "les-heaux-de-brehat" },
-  { name: "Les Sables-d'Olonne", slug: "les-sables-d-olonne" },
-  { name: "Lesconil", slug: "lesconil" },
-  { name: "Locmariaquer", slug: "locmariaquer" },
-  { name: "Locquemeau", slug: "locquemeau" },
-  { name: "Locquirec", slug: "locquirec" },
-  { name: "Loctudy", slug: "loctudy" },
-  { name: "Lorient", slug: "lorient" },
-  { name: "Luc-sur-mer", slug: "luc-sur-mer" },
-  { name: "Mimizan", slug: "mimizan" },
-  { name: "Morgat", slug: "morgat" },
-  { name: "Noirmoutier (L'Herbaudière)", slug: "noirmoutier-l-herbaudiere" },
-  { name: "Omonville-la-Rogue", slug: "omonville-la-rogue" },
-  { name: "Ouistreham", slug: "ouistreham" },
-  { name: "Paimpol", slug: "paimpol" },
-  { name: "Pauillac", slug: "pauillac" },
-  { name: "Penfret (Îles de Glénan)", slug: "penfret-iles-de-glenan" },
-  { name: "Penmarc'h / Saint-Guénolé", slug: "penmarc-h-saint-guenole" },
-  { name: "Perros-Guirec", slug: "perros-guirec" },
-  { name: "Ploumanac'h", slug: "ploumanac-h" },
-  { name: "Pointe d'Agon", slug: "pointe-d-agon" },
-  { name: "Pointe de Gatseau", slug: "pointe-de-gatseau" },
-  { name: "Pointe de Grave (Port-Bloc)", slug: "pointe-de-grave-port-bloc" },
-  { name: "Pointe de Saint-Gildas", slug: "pointe-de-saint-gildas" },
-  { name: "Pornic", slug: "pornic" },
-  { name: "Pornichet", slug: "pornichet" },
-  { name: "Port Manec'h", slug: "port-manec-h" },
-  { name: "Port du Crouesty", slug: "port-du-crouesty" },
-  { name: "Port-Béni", slug: "port-beni" },
-  { name: "Port-Louis (Locmalo)", slug: "port-louis-locmalo" },
-  { name: "Port-Navalo", slug: "port-navalo" },
-  { name: "Port-en-Bessin", slug: "port-en-bessin" },
-  { name: "Portbail", slug: "portbail" },
-  { name: "Portsall", slug: "portsall" },
-  { name: "Pénerf", slug: "penerf" },
-  { name: "Quiberon (Port-Haliguen)", slug: "quiberon-port-haliguen" },
-  { name: "Quiberon (Port-Maria)", slug: "quiberon-port-maria" },
-  { name: "Quinéville", slug: "quineville" },
-  { name: "Richards", slug: "richards" },
-  { name: "Roscoff", slug: "roscoff" },
-  { name: "Royan", slug: "royan" },
-  { name: "Saint-Cast", slug: "saint-cast" },
-  { name: "Saint-Malo", slug: "saint-malo" },
-  { name: "Saint-Nazaire", slug: "saint-nazaire" },
-  { name: "Saint-Quay-Portrieux", slug: "saint-quay-portrieux" },
-  { name: "Saint-Vaast-la-Hougue", slug: "saint-vaast-la-hougue" },
-  { name: "Saint-Valery-en-Caux", slug: "saint-valery-en-caux" },
+  { name: "Binic", slug: "binic", dept: "Côtes-d'Armor (22)" },
+  { name: "Dahouet", slug: "dahouet", dept: "Côtes-d'Armor (22)" },
+  { name: "Erquy", slug: "erquy", dept: "Côtes-d'Armor (22)" },
+  {
+    name: "Les Héaux de Bréhat",
+    slug: "les-heaux-de-brehat",
+    dept: "Côtes-d'Armor (22)",
+  },
+  { name: "Locquemeau", slug: "locquemeau", dept: "Côtes-d'Armor (22)" },
+  { name: "Paimpol", slug: "paimpol", dept: "Côtes-d'Armor (22)" },
+  { name: "Perros-Guirec", slug: "perros-guirec", dept: "Côtes-d'Armor (22)" },
+  { name: "Ploumanac'h", slug: "ploumanac-h", dept: "Côtes-d'Armor (22)" },
+  { name: "Port-Béni", slug: "port-beni", dept: "Côtes-d'Armor (22)" },
+  { name: "Saint-Cast", slug: "saint-cast", dept: "Côtes-d'Armor (22)" },
+  {
+    name: "Saint-Quay-Portrieux",
+    slug: "saint-quay-portrieux",
+    dept: "Côtes-d'Armor (22)",
+  },
+  { name: "Trébeurden", slug: "trebeurden", dept: "Côtes-d'Armor (22)" },
+  { name: "Tréguier", slug: "treguier", dept: "Côtes-d'Armor (22)" },
+  {
+    name: "Île des Ébihens",
+    slug: "ile-des-ebihens",
+    dept: "Côtes-d'Armor (22)",
+  },
+
+  // Finistère (29)
+  { name: "Aber Wrac'h", slug: "aber-wrac-h", dept: "Finistère (29)" },
+  { name: "Anse de Primel", slug: "anse-de-primel", dept: "Finistère (29)" },
+  { name: "Audierne", slug: "audierne", dept: "Finistère (29)" },
+  {
+    name: "Baie de Morlaix - Carantec",
+    slug: "baie-de-morlaix-carantec",
+    dept: "Finistère (29)",
+  },
+  { name: "Brest", slug: "brest", dept: "Finistère (29)" },
+  { name: "Brignogan-Plage", slug: "brignogan-plage", dept: "Finistère (29)" },
+  { name: "Bénodet", slug: "benodet", dept: "Finistère (29)" },
+  { name: "Camaret-sur-Mer", slug: "camaret-sur-mer", dept: "Finistère (29)" },
+  { name: "Concarneau", slug: "concarneau", dept: "Finistère (29)" },
+  { name: "Douarnenez", slug: "douarnenez", dept: "Finistère (29)" },
+  { name: "Fouesnant", slug: "fouesnant", dept: "Finistère (29)" },
+  { name: "L'Aber Benoît", slug: "l-aber-benoit", dept: "Finistère (29)" },
+  {
+    name: "L'Aber Ildut - Lanildut",
+    slug: "l-aber-ildut-lanildut",
+    dept: "Finistère (29)",
+  },
+  { name: "Le Conquet", slug: "le-conquet", dept: "Finistère (29)" },
+  { name: "Le Guilvinec", slug: "le-guilvinec", dept: "Finistère (29)" },
+  { name: "Le Pouldu", slug: "le-pouldu", dept: "Finistère (29)" },
+  { name: "Lesconil", slug: "lesconil", dept: "Finistère (29)" },
+  { name: "Locquirec", slug: "locquirec", dept: "Finistère (29)" },
+  { name: "Loctudy", slug: "loctudy", dept: "Finistère (29)" },
+  { name: "Morgat", slug: "morgat", dept: "Finistère (29)" },
+  {
+    name: "Penfret (Îles de Glénan)",
+    slug: "penfret-iles-de-glenan",
+    dept: "Finistère (29)",
+  },
+  {
+    name: "Penmarc'h / Saint-Guénolé",
+    slug: "penmarc-h-saint-guenole",
+    dept: "Finistère (29)",
+  },
+  { name: "Port Manec'h", slug: "port-manec-h", dept: "Finistère (29)" },
+  { name: "Portsall", slug: "portsall", dept: "Finistère (29)" },
+  { name: "Roscoff", slug: "roscoff", dept: "Finistère (29)" },
+  { name: "Trez-Hir", slug: "trez-hir", dept: "Finistère (29)" },
+
+  // Gironde (33)
+  {
+    name: "Arcachon (Jetée d'Eyrac)",
+    slug: "arcachon-jetee-d-eyrac",
+    dept: "Gironde (33)",
+  },
+  { name: "Bordeaux", slug: "bordeaux", dept: "Gironde (33)" },
+  { name: "Cap Ferret", slug: "cap-ferret", dept: "Gironde (33)" },
+  { name: "Lacanau", slug: "lacanau", dept: "Gironde (33)" },
+  { name: "Pauillac", slug: "pauillac", dept: "Gironde (33)" },
+  {
+    name: "Pointe de Grave (Port-Bloc)",
+    slug: "pointe-de-grave-port-bloc",
+    dept: "Gironde (33)",
+  },
+  { name: "Richards", slug: "richards", dept: "Gironde (33)" },
+
+  // Ille-et-Vilaine (35)
+  { name: "Cancale", slug: "cancale", dept: "Ille-et-Vilaine (35)" },
+  { name: "Saint-Malo", slug: "saint-malo", dept: "Ille-et-Vilaine (35)" },
+
+  // Landes (40)
+  { name: "Biscarrosse", slug: "biscarrosse", dept: "Landes (40)" },
+  { name: "Mimizan", slug: "mimizan", dept: "Landes (40)" },
+  { name: "Vieux-Boucau", slug: "vieux-boucau", dept: "Landes (40)" },
+
+  // Loire-Atlantique (44)
+  { name: "Le Croisic", slug: "le-croisic", dept: "Loire-Atlantique (44)" },
+  { name: "Le Pouliguen", slug: "le-pouliguen", dept: "Loire-Atlantique (44)" },
+  {
+    name: "Pointe de Saint-Gildas",
+    slug: "pointe-de-saint-gildas",
+    dept: "Loire-Atlantique (44)",
+  },
+  { name: "Pornic", slug: "pornic", dept: "Loire-Atlantique (44)" },
+  { name: "Pornichet", slug: "pornichet", dept: "Loire-Atlantique (44)" },
+  {
+    name: "Saint-Nazaire",
+    slug: "saint-nazaire",
+    dept: "Loire-Atlantique (44)",
+  },
+
+  // Manche (50)
+  { name: "Barfleur", slug: "barfleur", dept: "Manche (50)" },
+  { name: "Carteret", slug: "carteret", dept: "Manche (50)" },
+  { name: "Cherbourg", slug: "cherbourg", dept: "Manche (50)" },
+  { name: "Diélette", slug: "dielette", dept: "Manche (50)" },
+  { name: "Goury", slug: "goury", dept: "Manche (50)" },
+  { name: "Granville", slug: "granville", dept: "Manche (50)" },
+  {
+    name: "Omonville-la-Rogue",
+    slug: "omonville-la-rogue",
+    dept: "Manche (50)",
+  },
+  { name: "Pointe d'Agon", slug: "pointe-d-agon", dept: "Manche (50)" },
+  { name: "Portbail", slug: "portbail", dept: "Manche (50)" },
+  { name: "Quinéville", slug: "quineville", dept: "Manche (50)" },
+  {
+    name: "Saint-Vaast-la-Hougue",
+    slug: "saint-vaast-la-hougue",
+    dept: "Manche (50)",
+  },
   {
     name: "Sainte-Marie-du-Mont (Utah Beach)",
     slug: "sainte-marie-du-mont-utah-beach",
+    dept: "Manche (50)",
   },
-  { name: "Surtainville", slug: "surtainville" },
-  { name: "Trez-Hir", slug: "trez-hir" },
-  { name: "Trouville / Deauville", slug: "trouville-deauville" },
-  { name: "Trébeurden", slug: "trebeurden" },
-  { name: "Tréguier", slug: "treguier" },
-  { name: "Tréhiguier", slug: "trehiguier" },
-  { name: "Vannes", slug: "vannes" },
-  { name: "Vauville", slug: "vauville" },
-  { name: "Vierville", slug: "vierville" },
-  { name: "Vieux-Boucau", slug: "vieux-boucau" },
-  { name: "Wissant", slug: "wissant" },
-  { name: "Étel", slug: "etel" },
-  { name: "Étretat", slug: "etretat" },
-  { name: "Île d'Oléron (La Cotinière)", slug: "ile-d-oleron-la-cotiniere" },
-  { name: "Île d'Yeu", slug: "ile-d-yeu" },
-  { name: "Île de Groix (Port-Tudy)", slug: "ile-de-groix-port-tudy" },
-  { name: "Île de Ré (Saint-Martin)", slug: "ile-de-re-saint-martin" },
-  { name: "Île des Ébihens", slug: "ile-des-ebihens" },
-  { name: "Îles Saint-Marcouf", slug: "iles-saint-marcouf" },
+  { name: "Surtainville", slug: "surtainville", dept: "Manche (50)" },
+  { name: "Vauville", slug: "vauville", dept: "Manche (50)" },
+  {
+    name: "Îles Saint-Marcouf",
+    slug: "iles-saint-marcouf",
+    dept: "Manche (50)",
+  },
+
+  // Morbihan (56)
+  { name: "Arradon", slug: "arradon", dept: "Morbihan (56)" },
+  {
+    name: "Auray (St-Goustan)",
+    slug: "auray-st-goustan",
+    dept: "Morbihan (56)",
+  },
+  {
+    name: "Belle-Île (Le Palais)",
+    slug: "belle-ile-le-palais",
+    dept: "Morbihan (56)",
+  },
+  { name: "Houat", slug: "houat", dept: "Morbihan (56)" },
+  { name: "Hoëdic", slug: "hoedic", dept: "Morbihan (56)" },
+  {
+    name: "La Trinité-sur-Mer",
+    slug: "la-trinite-sur-mer",
+    dept: "Morbihan (56)",
+  },
+  { name: "Le Logeo", slug: "le-logeo", dept: "Morbihan (56)" },
+  { name: "Locmariaquer", slug: "locmariaquer", dept: "Morbihan (56)" },
+  { name: "Lorient", slug: "lorient", dept: "Morbihan (56)" },
+  { name: "Port du Crouesty", slug: "port-du-crouesty", dept: "Morbihan (56)" },
+  {
+    name: "Port-Louis (Locmalo)",
+    slug: "port-louis-locmalo",
+    dept: "Morbihan (56)",
+  },
+  { name: "Port-Navalo", slug: "port-navalo", dept: "Morbihan (56)" },
+  { name: "Pénerf", slug: "penerf", dept: "Morbihan (56)" },
+  {
+    name: "Quiberon (Port-Haliguen)",
+    slug: "quiberon-port-haliguen",
+    dept: "Morbihan (56)",
+  },
+  {
+    name: "Quiberon (Port-Maria)",
+    slug: "quiberon-port-maria",
+    dept: "Morbihan (56)",
+  },
+  { name: "Tréhiguier", slug: "trehiguier", dept: "Morbihan (56)" },
+  { name: "Vannes", slug: "vannes", dept: "Morbihan (56)" },
+  { name: "Étel", slug: "etel", dept: "Morbihan (56)" },
+  {
+    name: "Île de Groix (Port-Tudy)",
+    slug: "ile-de-groix-port-tudy",
+    dept: "Morbihan (56)",
+  },
+
+  // Nord (59)
+  { name: "Dunkerque", slug: "dunkerque", dept: "Nord (59)" },
+  { name: "Gravelines", slug: "gravelines", dept: "Nord (59)" },
+
+  // Pas-de-Calais (62)
+  {
+    name: "Berck Plage - Fort Mahon",
+    slug: "berck-plage-fort-mahon",
+    dept: "Pas-de-Calais (62)",
+  },
+  {
+    name: "Boulogne-sur-Mer",
+    slug: "boulogne-sur-mer",
+    dept: "Pas-de-Calais (62)",
+  },
+  { name: "Calais", slug: "calais", dept: "Pas-de-Calais (62)" },
+  { name: "Wissant", slug: "wissant", dept: "Pas-de-Calais (62)" },
+
+  // Pyrénées-Atlantiques (64)
+  {
+    name: "Boucau-Bayonne / Biarritz",
+    slug: "boucau-bayonne-biarritz",
+    dept: "Pyrénées-Atlantiques (64)",
+  },
+
+  // Seine-Maritime (76)
+  { name: "Dieppe", slug: "dieppe", dept: "Seine-Maritime (76)" },
+  { name: "Fécamp", slug: "fecamp", dept: "Seine-Maritime (76)" },
+  { name: "Le Havre", slug: "le-havre", dept: "Seine-Maritime (76)" },
+  {
+    name: "Le Havre-Antifer",
+    slug: "le-havre-antifer",
+    dept: "Seine-Maritime (76)",
+  },
+  { name: "Le Tréport", slug: "le-treport", dept: "Seine-Maritime (76)" },
+  {
+    name: "Saint-Valery-en-Caux",
+    slug: "saint-valery-en-caux",
+    dept: "Seine-Maritime (76)",
+  },
+  { name: "Étretat", slug: "etretat", dept: "Seine-Maritime (76)" },
+
+  // Somme (80)
+  { name: "Cayeux-sur-mer", slug: "cayeux-sur-mer", dept: "Somme (80)" },
+
+  // Vendée (85)
+  { name: "Fromentine", slug: "fromentine", dept: "Vendée (85)" },
+  {
+    name: "Les Sables-d'Olonne",
+    slug: "les-sables-d-olonne",
+    dept: "Vendée (85)",
+  },
+  {
+    name: "Noirmoutier (L'Herbaudière)",
+    slug: "noirmoutier-l-herbaudiere",
+    dept: "Vendée (85)",
+  },
+  { name: "Île d'Yeu", slug: "ile-d-yeu", dept: "Vendée (85)" },
 ];
 
 const API_TOKEN = "6644217faf20d111fb8d5b6a3acc2522";
