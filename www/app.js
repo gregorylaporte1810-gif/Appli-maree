@@ -5,156 +5,113 @@ const currentState = document.getElementById("current-state");
 const nextEvent = document.getElementById("next-event");
 const tideGrid = document.getElementById("tide-grid");
 
-// 2. Base des coordonnées GPS des ports
-const PORTS_COORDINATES = {
+// 2. Base des données des ports (Coordonnées pour le GPS + ID SHOM pour l'API)
+const PORTS_DATA = {
   // Manche & Nord
-  dunkerque: { lat: 51.034, lon: 2.376 },
-  calais: { lat: 50.958, lon: 1.859 },
-  "le-havre": { lat: 49.49, lon: 0.1 },
-  cherbourg: { lat: 49.63, lon: -1.62 },
-  granville: { lat: 48.83, lon: -1.6 },
+  dunkerque: { id: "8", lat: 51.034, lon: 2.376 },
+  calais: { id: "9", lat: 50.958, lon: 1.859 },
+  "le-havre": { id: "16", lat: 49.49, lon: 0.1 },
+  cherbourg: { id: "29", lat: 49.63, lon: -1.62 },
+  granville: { id: "40", lat: 48.83, lon: -1.6 },
 
   // Bretagne
-  "saint-malo": { lat: 48.65, lon: -2.02 },
-  roscoff: { lat: 48.72, lon: -3.98 },
-  brest: { lat: 48.39, lon: -4.48 },
-  concarneau: { lat: 47.87, lon: -3.91 },
-  lorient: { lat: 47.75, lon: -3.36 },
-  vannes: { lat: 47.65, lon: -2.75 },
+  "saint-malo": { id: "52", lat: 48.65, lon: -2.02 },
+  roscoff: { id: "62", lat: 48.72, lon: -3.98 },
+  brest: { id: "71", lat: 48.39, lon: -4.48 },
+  concarneau: { id: "81", lat: 47.87, lon: -3.91 },
+  lorient: { id: "84", lat: 47.75, lon: -3.36 },
+  vannes: { id: "92", lat: 47.65, lon: -2.75 }, // Port-Navalo / Golfe
 
   // Atlantique
-  "saint-nazaire": { lat: 47.27, lon: -2.21 },
-  "les-sables-dolonne": { lat: 46.49, lon: -1.78 },
-  "la-rochelle": { lat: 46.16, lon: -1.15 },
-  royan: { lat: 45.62, lon: -1.03 },
-  arcachon: { lat: 44.66, lon: -1.16 },
-  biarritz: { lat: 43.48, lon: -1.56 },
+  "saint-nazaire": { id: "104", lat: 47.27, lon: -2.21 },
+  "les-sables-dolonne": { id: "114", lat: 46.49, lon: -1.78 },
+  "la-rochelle": { id: "119", lat: 46.16, lon: -1.15 },
+  royan: { id: "124", lat: 45.62, lon: -1.03 },
+  arcachon: { id: "128", lat: 44.66, lon: -1.16 },
+  biarritz: { id: "136", lat: 43.48, lon: -1.56 }, // Saint-Jean-de-Luz
 };
 
+// N'oublie pas de coller ta clé obtenue sur api-maree.fr
+const API_TOKEN = "6644217faf20d111fb8d5b6a3acc2522";
+
 async function fetchTideData(portKey) {
-  const coords = PORTS_COORDINATES[portKey];
-  if (!coords) return;
+  const portInfo = PORTS_DATA[portKey];
+  if (!portInfo) return;
 
   const today = new Date().toISOString().split("T")[0];
   const cacheKey = `marees_${portKey}_${today}`;
   const cachedData = localStorage.getItem(cacheKey);
 
   if (cachedData) {
-    console.log("Données chargées depuis le cache local (0 appel réseau !)");
     processAndRenderData(JSON.parse(cachedData));
     return;
   }
 
   currentState.textContent = "Mise à jour en direct… ⏳";
-  nextEvent.textContent = "Connexion à Open-Meteo...";
+  nextEvent.textContent = "Connexion au SHOM...";
   coefValue.textContent = "--";
   tideGrid.innerHTML = "";
 
   try {
-    // Appel de l'API Marine d'Open-Meteo : 100% gratuit, 0 clé requise
-    const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${coords.lat}&longitude=${coords.lon}&hourly=sea_level_height_msl&timezone=Europe%2FParis`;
-    const response = await fetch(url);
+    // L'URL de base selon la documentation de api-maree.fr
+    // L'identifiant du port est injecté dynamiquement
+    const url = `https://api-maree.fr/api/v1/tides?port_id=${portInfo.id}&date=${today}`;
 
-    if (!response.ok) {
-      throw new Error(`Erreur réseau : ${response.status}`);
-    }
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${API_TOKEN}`, // Méthode classique d'authentification
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) throw new Error(`Erreur réseau : ${response.status}`);
 
     const data = await response.json();
 
-    // On délègue l'extraction des pics et des creux à notre algorithme
-    const extremes = extractExtremes(data.hourly);
-
-    // On reformate l'objet pour qu'il s'injecte parfaitement dans ta fonction processAndRenderData existante
-    const formattedData = { extremes };
-
-    localStorage.setItem(cacheKey, JSON.stringify(formattedData));
-    processAndRenderData(formattedData);
+    localStorage.setItem(cacheKey, JSON.stringify(data));
+    processAndRenderData(data);
   } catch (error) {
     console.error("Erreur API :", error);
     currentState.textContent = "Erreur de connexion ❌";
-    nextEvent.textContent = "Vérifie ta connexion internet";
+    nextEvent.textContent = "Vérifie ta clé API";
   }
-}
-
-// Fonction pour analyser la courbe horaire et trouver les marées du jour
-function extractExtremes(hourly) {
-  const heights = hourly.sea_level_height_msl;
-  const times = hourly.time;
-  const extremes = [];
-
-  // On isole la date du jour (format YYYY-MM-DD)
-  const todayStr = new Date().toISOString().split("T")[0];
-
-  // On boucle sur les données en ignorant la première et la dernière heure pour comparer
-  for (let i = 1; i < heights.length - 1; i++) {
-    // On ignore les marées qui ne correspondent pas à la date d'aujourd'hui
-    if (!times[i].startsWith(todayStr)) continue;
-
-    const prev = heights[i - 1];
-    const curr = heights[i];
-    const next = heights[i + 1];
-
-    // Si la valeur actuelle est supérieure à la précédente ET à la suivante -> C'est un pic (Pleine Mer)
-    if (curr > prev && curr > next) {
-      extremes.push({
-        type: "High",
-        dt: new Date(times[i]).getTime() / 1000,
-        height: curr,
-      });
-    }
-    // Si la valeur actuelle est inférieure -> C'est un creux (Basse Mer)
-    else if (curr < prev && curr < next) {
-      extremes.push({
-        type: "Low",
-        dt: new Date(times[i]).getTime() / 1000,
-        height: curr,
-      });
-    }
-  }
-  return extremes;
 }
 
 // 4. Traitement et mise en forme des données reçues
 function processAndRenderData(data) {
-  if (!data.extremes || data.extremes.length === 0) return;
+  // On supprime la logique de marnage, l'API nous donne tout !
+  // Attention à vérifier les clés exactes retournées dans ton console.log(data)
 
-  const extremes = data.extremes;
+  const marees = data.marees; // À adapter selon le format exact du JSON
+  if (!marees || marees.length === 0) return;
 
-  // 1. Calcul du coefficient (référence Brest 6.10m = coeff 100)
-  const highTides = extremes.filter(
-    (e) => e.type === "High" || e.type === "Pleine Mer",
+  // 1. Récupération du coefficient officiel du SHOM
+  // Le coef n'est souvent communiqué que sur les marées hautes
+  const pleineMer = marees.find(
+    (m) => m.coefficient != null && m.coefficient > 0,
   );
-  const lowTides = extremes.filter(
-    (e) => e.type === "Low" || e.type === "Basse Mer",
-  );
+  coefValue.textContent = pleineMer ? pleineMer.coefficient : "--";
 
-  if (highTides.length > 0 && lowTides.length > 0) {
-    const maxHigh = Math.max(...highTides.map((e) => e.height));
-    const minLow = Math.min(...lowTides.map((e) => e.height));
-    const marnage = maxHigh - minLow;
-
-    let coeff = Math.round((marnage / 6.1) * 100);
-    coeff = Math.min(120, Math.max(20, coeff));
-    coefValue.textContent = coeff;
-  } else {
-    coefValue.textContent = "--";
-  }
-
-  // 2. Mise à jour de l'en-tête
-  currentState.textContent = "Données en direct 🛰️";
+  // 2. En-tête
+  currentState.textContent = "Données Officielles (SHOM) ⚓";
   nextEvent.textContent = "Mise à jour automatique";
 
-  // 3. Affichage des cartes avec la structure CSS exacte
+  // 3. Affichage des 4 cartes de la journée
   tideGrid.innerHTML = "";
-  extremes.slice(0, 4).forEach((item) => {
-    const isHigh = item.type === "High" || item.type === "Pleine Mer";
+  marees.slice(0, 4).forEach((item) => {
+    // Adapter "Pleine mer" selon la chaîne de caractère renvoyée par le JSON
+    const isHigh = item.etat === "Pleine mer";
     const icon = isHigh ? "🏔️" : "🌊";
     const title = isHigh ? "Pleine Mer" : "Basse Mer";
-    const time = new Date(item.dt * 1000).toLocaleTimeString("fr-FR", {
+
+    // Formatage de l'heure exacte
+    const time = new Date(item.date).toLocaleTimeString("fr-FR", {
       hour: "2-digit",
       minute: "2-digit",
     });
-    const height = item.height.toFixed(2) + "m";
+
+    // Formatage de la hauteur positive
+    const height = parseFloat(item.hauteur).toFixed(2) + "m";
 
     const card = document.createElement("div");
     card.classList.add("tide-card");
