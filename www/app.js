@@ -20,7 +20,7 @@ const PORTS_DATA = {
   brest: { id: "71", lat: 48.39, lon: -4.48 },
   concarneau: { id: "81", lat: 47.87, lon: -3.91 },
   lorient: { id: "84", lat: 47.75, lon: -3.36 },
-  vannes: { id: "92", lat: 47.65, lon: -2.75 }, // Port-Navalo / Golfe
+  vannes: { id: "92", lat: 47.65, lon: -2.75 },
 
   // Atlantique
   "saint-nazaire": { id: "104", lat: 47.27, lon: -2.21 },
@@ -28,10 +28,9 @@ const PORTS_DATA = {
   "la-rochelle": { id: "119", lat: 46.16, lon: -1.15 },
   royan: { id: "124", lat: 45.62, lon: -1.03 },
   arcachon: { id: "128", lat: 44.66, lon: -1.16 },
-  biarritz: { id: "136", lat: 43.48, lon: -1.56 }, // Saint-Jean-de-Luz
+  biarritz: { id: "136", lat: 43.48, lon: -1.56 },
 };
 
-// N'oublie pas de coller ta clé obtenue sur api-maree.fr
 const API_TOKEN = "6644217faf20d111fb8d5b6a3acc2522";
 
 async function fetchTideData(portKey) {
@@ -39,7 +38,7 @@ async function fetchTideData(portKey) {
   if (!portInfo) return;
 
   const today = new Date().toISOString().split("T")[0];
-  const cacheKey = `shom_marees_${portKey}_${today}`;
+  const cacheKey = `shom_v4_${portKey}_${today}`;
   const cachedData = localStorage.getItem(cacheKey);
 
   if (cachedData) {
@@ -53,17 +52,12 @@ async function fetchTideData(portKey) {
   tideGrid.innerHTML = "";
 
   try {
-    // Nouvelle URL calquée sur la documentation de la capture d'écran
     const url = `https://api-maree.fr/tide-extrema?site=${portKey}&from=${today}&to=${today}&tz=Europe/Paris&key=${API_TOKEN}`;
-
-    // L'appel fetch devient beaucoup plus simple, plus besoin de headers
     const response = await fetch(url);
 
     if (!response.ok) throw new Error(`Erreur réseau : ${response.status}`);
 
     const data = await response.json();
-
-    // Fais un log pour inspecter la structure réelle du JSON reçu !
     console.log("Données reçues de api-maree :", data);
 
     localStorage.setItem(cacheKey, JSON.stringify(data));
@@ -74,12 +68,16 @@ async function fetchTideData(portKey) {
     nextEvent.textContent = "Vérifie ta clé API";
   }
 }
+
 // 4. Traitement et mise en forme des données reçues
 function processAndRenderData(data) {
-  // Détection automatique du tableau de marées dans le JSON
-  const marees = Array.isArray(data) 
-    ? data 
-    : (data.extremas || data.extremes || data.data || data.tides || Object.values(data).find(val => Array.isArray(val)));
+  const marees = Array.isArray(data)
+    ? data
+    : data.extremas ||
+      data.extremes ||
+      data.data ||
+      data.tides ||
+      Object.values(data).find((val) => Array.isArray(val));
 
   if (!marees || !Array.isArray(marees) || marees.length === 0) {
     console.warn("Impossible de trouver le tableau des marées dans :", data);
@@ -87,7 +85,6 @@ function processAndRenderData(data) {
     return;
   }
 
-  // Fonction utilitaire pour nettoyer et convertir proprement les nombres (gère les virgules françaises)
   function parseVal(val) {
     if (typeof val === "number") return val;
     if (typeof val === "string") {
@@ -101,10 +98,16 @@ function processAndRenderData(data) {
   // 1. Récupération du coefficient officiel du SHOM
   let coef = "--";
   const pleineMerCoef = marees.find(
-    (m) => (m.coefficient != null && m.coefficient > 0) || (m.coef != null && m.coef > 0) || (m.coeft != null && m.coeft > 0)
+    (m) =>
+      (m.coefficient != null && m.coefficient > 0) ||
+      (m.coef != null && m.coef > 0) ||
+      (m.coeft != null && m.coeft > 0),
   );
   if (pleineMerCoef) {
-    coef = parseVal(pleineMerCoef.coefficient || pleineMerCoef.coef || pleineMerCoef.coeft) ?? "--";
+    coef =
+      parseVal(
+        pleineMerCoef.coefficient || pleineMerCoef.coef || pleineMerCoef.coeft,
+      ) ?? "--";
   }
   coefValue.textContent = coef;
 
@@ -115,38 +118,53 @@ function processAndRenderData(data) {
   // 3. Affichage des cartes de la journée
   tideGrid.innerHTML = "";
   marees.slice(0, 4).forEach((item) => {
-    // Détection universelle de l'état (Pleine mer / Basse mer)
     const etatStr = Object.values(item).join(" ").toLowerCase();
-    const isHigh = etatStr.includes("pleine") || etatStr.includes("high") || etatStr.includes("plein");
-    
+    const isHigh =
+      etatStr.includes("pleine") ||
+      etatStr.includes("high") ||
+      etatStr.includes("plein");
+
     const icon = isHigh ? "🏔️" : "🌊";
     const title = isHigh ? "Pleine Mer" : "Basse Mer";
 
-    // Extraction de l'heure
     let time = "--:--";
-    const rawDate = item.date || item.time || item.datetime || item.dt || item.timestamp;
+    const rawDate =
+      item.date || item.time || item.datetime || item.dt || item.timestamp;
     if (rawDate) {
       if (typeof rawDate === "number") {
-        time = new Date(rawDate * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        time = new Date(rawDate * 1000).toLocaleTimeString("fr-FR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
       } else {
         const dateObj = new Date(rawDate);
         if (!isNaN(dateObj.getTime())) {
-          time = dateObj.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+          time = dateObj.toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
         } else if (typeof rawDate === "string" && rawDate.includes(":")) {
           time = rawDate.slice(11, 16) || rawDate.slice(0, 5);
         }
       }
     }
 
-    // Recherche et conversion sécurisée de la hauteur
-    let rawHeight = item.hauteur ?? item.height ?? item.valeur ?? item.value ?? item.niveau ?? item.water_level;
+    // Recherche exhaustive de la hauteur dans l'objet
+    let rawHeight =
+      item.hauteur ??
+      item.height ??
+      item.valeur ??
+      item.value ??
+      item.niveau ??
+      item.water_level ??
+      item.h ??
+      item.mer;
     let heightNum = parseVal(rawHeight);
 
     if (heightNum === null) {
-      // Parcourt toutes les propriétés pour trouver un nombre cohérent pour une hauteur d'eau
       for (const val of Object.values(item)) {
         const p = parseVal(val);
-        if (p !== null && p !== Number(coef) && p >= -5 && p <= 15) {
+        if (p !== null && p !== Number(coef) && p >= -5 && p <= 16) {
           heightNum = p;
           break;
         }
@@ -182,7 +200,6 @@ portSelect.addEventListener("change", (e) => {
 
 // --- GÉOLOCALISATION ---
 
-// Formule de Haversine pour calculer la distance entre deux points GPS (en km)
 function getDistanceInKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -197,12 +214,10 @@ function getDistanceInKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Trouver la clé du port le plus proche des coordonnées GPS données
 function findNearestPort(userLat, userLon) {
   let closestPortKey = null;
   let minDistance = Infinity;
 
-  // Remplacer PORTS_COORDINATES par PORTS_DATA
   for (const [key, coords] of Object.entries(PORTS_DATA)) {
     const dist = getDistanceInKm(userLat, userLon, coords.lat, coords.lon);
     if (dist < minDistance) {
@@ -213,7 +228,6 @@ function findNearestPort(userLat, userLon) {
   return closestPortKey;
 }
 
-// Gestion du clic sur le bouton de géolocalisation
 const geoBtn = document.getElementById("geo-btn");
 
 geoBtn.addEventListener("click", () => {
