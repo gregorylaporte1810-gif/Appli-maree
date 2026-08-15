@@ -76,73 +76,69 @@ async function fetchTideData(portKey) {
 }
 // 4. Traitement et mise en forme des données reçues
 function processAndRenderData(data) {
-  // Détection automatique du tableau de données dans le JSON
-  const marees = Array.isArray(data)
-    ? data
-    : data.extremas ||
-      data.extremes ||
-      data.data ||
-      data.tides ||
-      Object.values(data).find((val) => Array.isArray(val));
+  // Détection automatique du tableau de marées dans le JSON
+  const marees = Array.isArray(data) 
+    ? data 
+    : (data.extremas || data.extremes || data.data || data.tides || Object.values(data).find(val => Array.isArray(val)));
 
-  if (!marees || marees.length === 0) {
-    console.warn("Aucun tableau de marées trouvé dans l'objet :", data);
+  if (!marees || !Array.isArray(marees) || marees.length === 0) {
+    console.warn("Impossible de trouver le tableau des marées dans :", data);
+    currentState.textContent = "Format de données inconnu ❌";
     return;
   }
 
-  // Affichage du premier élément dans la console pour inspection si besoin
-  console.log("Exemple d'objet marée reçu :", marees[0]);
-
   // 1. Récupération du coefficient officiel du SHOM
-  const pleineMer = marees.find(
-    (m) =>
-      (m.coefficient != null && m.coefficient > 0) ||
-      (m.coef != null && m.coef > 0),
+  const pleineMerCoef = marees.find(
+    (m) => (m.coefficient != null && m.coefficient > 0) || (m.coef != null && m.coef > 0) || (m.coeft != null && m.coeft > 0)
   );
-  coefValue.textContent = pleineMer
-    ? pleineMer.coefficient || pleineMer.coef
-    : "--";
+  const coef = pleineMerCoef ? (pleineMerCoef.coefficient || pleineMerCoef.coef || pleineMerCoef.coeft) : "--";
+  coefValue.textContent = coef;
 
   // 2. En-tête
   currentState.textContent = "Données Officielles (SHOM) ⚓";
   nextEvent.textContent = "Mise à jour automatique";
 
-  // 3. Affichage des 4 cartes de la journée
+  // 3. Affichage des cartes de la journée
   tideGrid.innerHTML = "";
   marees.slice(0, 4).forEach((item) => {
-    // Détection dynamique du type (Pleine mer / Basse mer)
-    const etatStr = String(
-      item.etat || item.type || item.state || "",
-    ).toLowerCase();
-    const isHigh =
-      etatStr.includes("pleine") ||
-      etatStr.includes("high") ||
-      etatStr.includes("plein");
-
+    // Détection universelle de l'état (Pleine mer / Basse mer)
+    const etatStr = Object.values(item).join(" ").toLowerCase();
+    const isHigh = etatStr.includes("pleine") || etatStr.includes("high") || etatStr.includes("plein");
+    
     const icon = isHigh ? "🏔️" : "🌊";
     const title = isHigh ? "Pleine Mer" : "Basse Mer";
 
-    // Récupération dynamique de la date/heure
-    const rawDate = item.date || item.time || item.datetime || item.dt;
-    const time = rawDate
-      ? typeof rawDate === "number"
-        ? new Date(rawDate * 1000).toLocaleTimeString("fr-FR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        : new Date(rawDate).toLocaleTimeString("fr-FR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-      : "--:--";
+    // Extraction de l'heure
+    let time = "--:--";
+    const rawDate = item.date || item.time || item.datetime || item.dt || item.timestamp;
+    if (rawDate) {
+      if (typeof rawDate === "number") {
+        time = new Date(rawDate * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      } else {
+        const dateObj = new Date(rawDate);
+        if (!isNaN(dateObj.getTime())) {
+          time = dateObj.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        } else if (typeof rawDate === "string" && rawDate.includes(":")) {
+          time = rawDate.slice(11, 16) || rawDate.slice(0, 5);
+        }
+      }
+    }
 
-    // Récupération dynamique de la hauteur avec test de plusieurs clés possibles
-    const rawHeight =
-      item.hauteur ?? item.height ?? item.valeur ?? item.value ?? item.niveau;
-    const height =
-      rawHeight !== undefined && !isNaN(rawHeight)
-        ? Number(rawHeight).toFixed(2) + "m"
-        : "--m";
+    // Recherche automatique de la hauteur dans toutes les propriétés de l'objet
+    let rawHeight = item.hauteur ?? item.height ?? item.valeur ?? item.value ?? item.niveau ?? item.water_level;
+    if (rawHeight === undefined || rawHeight === null || isNaN(rawHeight)) {
+      // Parcourt toutes les propriétés pour trouver un nombre décimale cohérent pour une hauteur d'eau
+      for (const val of Object.values(item)) {
+        if (typeof val === "number" && val !== Number(coef) && val >= -5 && val <= 15) {
+          rawHeight = val;
+          break;
+        }
+      }
+    }
+
+    const height = (rawHeight !== undefined && rawHeight !== null && !isNaN(rawHeight)) 
+      ? Number(rawHeight).toFixed(2) + "m" 
+      : "--m";
 
     const card = document.createElement("div");
     card.classList.add("tide-card");
