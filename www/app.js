@@ -57,8 +57,8 @@ async function fetchTideData(portKey) {
   tideGrid.innerHTML = "";
 
   try {
-    // CORRECTION : On utilise portInfo.id (l'identifiant numérique officiel) à la place de portKey
-    const url = `https://api-maree.fr/tide-extrema?site=${portInfo.id}&from=${today}&to=${today}&tz=Europe/Paris&key=${API_TOKEN}`;
+    // On utilise le slug textuel officiel attendu par l'API
+    const url = `https://api-maree.fr/tide-extrema?site=${portInfo.slug}&from=${today}&to=${today}&tz=Europe/Paris&key=${API_TOKEN}`;
     const response = await fetch(url);
 
     if (!response.ok) throw new Error(`Erreur réseau : ${response.status}`);
