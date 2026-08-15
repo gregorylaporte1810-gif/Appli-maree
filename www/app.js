@@ -73,30 +73,18 @@ async function fetchTideData(portKey) {
 function processAndRenderData(data) {
   console.log("Structure brute reçue :", data);
 
-  // LA CORRECTION EST ICI : On cible 'extrema' au singulier !
-  let marees = data.extrema || data.extremes || data.data;
-
-  // Sécurité : si on ne trouve toujours pas, on cherche intelligemment un tableau qui contient des infos de marées (datetime, height...)
-  if (!marees || !Array.isArray(marees)) {
-    const tousLesTableaux = Object.values(data).filter((val) =>
-      Array.isArray(val),
-    );
-    marees = tousLesTableaux.find(
-      (arr) =>
-        arr.length > 0 &&
-        (arr[0].datetime !== undefined ||
-          arr[0].height !== undefined ||
-          arr[0].type !== undefined),
-    );
-  }
+  // Détection universelle : trouve automatiquement n'importe quel tableau dans l'objet JSON
+  let marees = Array.isArray(data)
+    ? data
+    : Object.values(data).find((val) => Array.isArray(val));
 
   if (!marees || !Array.isArray(marees) || marees.length === 0) {
-    console.warn("Impossible de trouver le tableau des marées dans :", data);
+    console.warn("Aucun tableau de marées trouvé dans :", data);
     currentState.textContent = "Format de données inconnu ❌";
     return;
   }
 
-  // Fonction utilitaire pour nettoyer et convertir les nombres (gère les virgules françaises)
+  // Fonction utilitaire pour nettoyer et convertir proprement les nombres (gère les virgules françaises)
   function parseVal(val) {
     if (typeof val === "number") return val;
     if (typeof val === "string") {
@@ -109,17 +97,12 @@ function processAndRenderData(data) {
 
   // 1. Récupération du coefficient officiel du SHOM
   let coef = "--";
-  const pleineMerCoef = marees.find(
-    (m) =>
-      (m.coefficient != null && m.coefficient > 0) ||
-      (m.coef != null && m.coef > 0) ||
-      (m.coeft != null && m.coeft > 0),
-  );
-  if (pleineMerCoef) {
-    coef =
-      parseVal(
-        pleineMerCoef.coefficient || pleineMerCoef.coef || pleineMerCoef.coeft,
-      ) ?? "--";
+  const pleineMerCoef =
+    marees.find((m) => m.coefficient || m.coef || m.coeft) || data;
+  const rawCoef =
+    pleineMerCoef.coefficient ?? pleineMerCoef.coef ?? pleineMerCoef.coeft;
+  if (rawCoef != null) {
+    coef = parseVal(rawCoef) ?? "--";
   }
   coefValue.textContent = coef;
 
@@ -130,54 +113,49 @@ function processAndRenderData(data) {
   // 3. Affichage des cartes de la journée
   tideGrid.innerHTML = "";
   marees.slice(0, 4).forEach((item) => {
-    // Détection universelle de l'état (Pleine mer / Basse mer)
-    const etatStr = Object.values(item).join(" ").toLowerCase();
+    // Détection universelle de l'état (Pleine mer / Basse mer) via le texte global de l'objet
+    const itemString = Object.values(item).join(" ").toLowerCase();
     const isHigh =
-      etatStr.includes("pleine") ||
-      etatStr.includes("high") ||
-      etatStr.includes("plein");
+      itemString.includes("plein") ||
+      itemString.includes("high") ||
+      itemString.includes("pm");
 
     const icon = isHigh ? "🏔️" : "🌊";
     const title = isHigh ? "Pleine Mer" : "Basse Mer";
 
-    // Extraction de l'heure
+    // Extraction intelligente de l'heure
     let time = "--:--";
-    const rawDate =
-      item.date || item.time || item.datetime || item.dt || item.timestamp;
-    if (rawDate) {
-      if (typeof rawDate === "number") {
-        time = new Date(rawDate * 1000).toLocaleTimeString("fr-FR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      } else {
-        const dateObj = new Date(rawDate);
-        if (!isNaN(dateObj.getTime())) {
-          time = dateObj.toLocaleTimeString("fr-FR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-        } else if (typeof rawDate === "string" && rawDate.includes(":")) {
-          time = rawDate.slice(11, 16) || rawDate.slice(0, 5);
+    for (const val of Object.values(item)) {
+      if (typeof val === "string" && val.includes(":")) {
+        if (val.includes("T")) {
+          const d = new Date(val);
+          if (!isNaN(d.getTime())) {
+            time = d.toLocaleTimeString("fr-FR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            break;
+          }
+        } else if (val.length >= 5) {
+          time = val.slice(0, 5);
+          break;
         }
       }
     }
 
     // Recherche et conversion sécurisée de la hauteur
-    let rawHeight =
-      item.hauteur ??
-      item.height ??
-      item.valeur ??
-      item.value ??
-      item.niveau ??
-      item.water_level;
-    let heightNum = parseVal(rawHeight);
+    let heightNum = null;
+    const explicitHeight =
+      item.hauteur ?? item.height ?? item.valeur ?? item.value ?? item.niveau;
+    if (explicitHeight !== undefined) {
+      heightNum = parseVal(explicitHeight);
+    }
 
     if (heightNum === null) {
-      // Parcourt toutes les propriétés pour trouver un nombre cohérent pour une hauteur d'eau
+      // Parcourt toutes les propriétés pour trouver un nombre cohérent pour une hauteur d'eau (-6m à 16m)
       for (const val of Object.values(item)) {
         const p = parseVal(val);
-        if (p !== null && p !== Number(coef) && p >= -5 && p <= 16) {
+        if (p !== null && p !== Number(coef) && p >= -6 && p <= 16) {
           heightNum = p;
           break;
         }
