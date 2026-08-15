@@ -87,11 +87,25 @@ function processAndRenderData(data) {
     return;
   }
 
+  // Fonction utilitaire pour nettoyer et convertir proprement les nombres (gère les virgules françaises)
+  function parseVal(val) {
+    if (typeof val === "number") return val;
+    if (typeof val === "string") {
+      const cleaned = val.replace(",", ".").replace(/[^\d.-]/g, "");
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? null : num;
+    }
+    return null;
+  }
+
   // 1. Récupération du coefficient officiel du SHOM
+  let coef = "--";
   const pleineMerCoef = marees.find(
     (m) => (m.coefficient != null && m.coefficient > 0) || (m.coef != null && m.coef > 0) || (m.coeft != null && m.coeft > 0)
   );
-  const coef = pleineMerCoef ? (pleineMerCoef.coefficient || pleineMerCoef.coef || pleineMerCoef.coeft) : "--";
+  if (pleineMerCoef) {
+    coef = parseVal(pleineMerCoef.coefficient || pleineMerCoef.coef || pleineMerCoef.coeft) ?? "--";
+  }
   coefValue.textContent = coef;
 
   // 2. En-tête
@@ -124,21 +138,22 @@ function processAndRenderData(data) {
       }
     }
 
-    // Recherche automatique de la hauteur dans toutes les propriétés de l'objet
+    // Recherche et conversion sécurisée de la hauteur
     let rawHeight = item.hauteur ?? item.height ?? item.valeur ?? item.value ?? item.niveau ?? item.water_level;
-    if (rawHeight === undefined || rawHeight === null || isNaN(rawHeight)) {
-      // Parcourt toutes les propriétés pour trouver un nombre décimale cohérent pour une hauteur d'eau
+    let heightNum = parseVal(rawHeight);
+
+    if (heightNum === null) {
+      // Parcourt toutes les propriétés pour trouver un nombre cohérent pour une hauteur d'eau
       for (const val of Object.values(item)) {
-        if (typeof val === "number" && val !== Number(coef) && val >= -5 && val <= 15) {
-          rawHeight = val;
+        const p = parseVal(val);
+        if (p !== null && p !== Number(coef) && p >= -5 && p <= 15) {
+          heightNum = p;
           break;
         }
       }
     }
 
-    const height = (rawHeight !== undefined && rawHeight !== null && !isNaN(rawHeight)) 
-      ? Number(rawHeight).toFixed(2) + "m" 
-      : "--m";
+    const height = heightNum !== null ? heightNum.toFixed(2) + "m" : "--m";
 
     const card = document.createElement("div");
     card.classList.add("tide-card");
