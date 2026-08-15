@@ -5,45 +5,169 @@ const currentState = document.getElementById("current-state");
 const nextEvent = document.getElementById("next-event");
 const tideGrid = document.getElementById("tide-grid");
 
+document.addEventListener("DOMContentLoaded", () => {
+  const portSelect = document.getElementById("port-select");
+
+  // Remplissage automatique du menu déroulant
+  PORTS_DATA.forEach((port) => {
+    const option = document.createElement("option");
+    option.value = port.slug;
+    option.textContent = port.name;
+    portSelect.appendChild(option);
+  });
+
+  // Sélectionner par défaut le premier port ou celui sauvegardé
+  portSelect.value = "roscoff"; // ou ta logique actuelle
+
+  // Le reste de ton code d'initialisation...
+});
 // 2. Base des données des ports avec le slug exact attendu par l'API
-const PORTS_DATA = {
-  // Manche & Nord
-  dunkerque: { id: "8", slug: "dunkerque", lat: 51.034, lon: 2.376 },
-  calais: { id: "9", slug: "calais", lat: 50.958, lon: 1.859 },
-  "le-havre": { id: "16", slug: "le-havre", lat: 49.49, lon: 0.1 },
-  cherbourg: { id: "29", slug: "cherbourg", lat: 49.63, lon: -1.62 },
-  granville: { id: "40", slug: "granville", lat: 48.83, lon: -1.6 },
-
-  // Bretagne
-  "saint-malo": { id: "52", slug: "saint-malo", lat: 48.65, lon: -2.02 },
-  roscoff: { id: "62", slug: "roscoff", lat: 48.72, lon: -3.98 },
-  brest: { id: "71", slug: "brest", lat: 48.39, lon: -4.48 },
-  concarneau: { id: "81", slug: "concarneau", lat: 47.87, lon: -3.91 },
-  lorient: { id: "84", slug: "lorient", lat: 47.75, lon: -3.36 },
-  vannes: { id: "92", slug: "vannes", lat: 47.65, lon: -2.75 },
-
-  // Atlantique
-  "saint-nazaire": { id: "104", slug: "saint-nazaire", lat: 47.27, lon: -2.21 },
-  "les-sables-dolonne": {
-    id: "114",
-    slug: "les-sables-dolonne",
-    lat: 46.49,
-    lon: -1.78,
+const PORTS_DATA = [
+  { name: "Aber Wrac'h", slug: "aber-wrac-h" },
+  { name: "Anse de Primel", slug: "anse-de-primel" },
+  { name: "Arcachon (Jetée d'Eyrac)", slug: "arcachon-jetee-d-eyrac" },
+  { name: "Arradon", slug: "arradon" },
+  { name: "Arromanches-les-Bains", slug: "arromanches-les-bains" },
+  { name: "Audierne", slug: "audierne" },
+  { name: "Auray (St-Goustan)", slug: "auray-st-goustan" },
+  { name: "Baie de Morlaix - Carantec", slug: "baie-de-morlaix-carantec" },
+  {
+    name: "Baie de Saint-Brieuc (Le Légué)",
+    slug: "baie-de-saint-brieuc-le-legue",
   },
-  "la-rochelle": { id: "119", slug: "la-rochelle", lat: 46.16, lon: -1.15 },
-  royan: { id: "124", slug: "royan", lat: 45.62, lon: -1.03 },
-  arcachon: { id: "128", slug: "arcachon", lat: 44.66, lon: -1.16 },
-  biarritz: { id: "136", slug: "biarritz", lat: 43.48, lon: -1.56 },
-};
+  { name: "Barfleur", slug: "barfleur" },
+  { name: "Belle-Île (Le Palais)", slug: "belle-ile-le-palais" },
+  { name: "Berck Plage - Fort Mahon", slug: "berck-plage-fort-mahon" },
+  { name: "Binic", slug: "binic" },
+  { name: "Biscarrosse", slug: "biscarrosse" },
+  { name: "Bordeaux", slug: "bordeaux" },
+  { name: "Boucau-Bayonne / Biarritz", slug: "boucau-bayonne-biarritz" },
+  { name: "Boulogne-sur-Mer", slug: "boulogne-sur-mer" },
+  { name: "Brest", slug: "brest" },
+  { name: "Brignogan-Plage", slug: "brignogan-plage" },
+  { name: "Bénodet", slug: "benodet" },
+  { name: "Calais", slug: "calais" },
+  { name: "Camaret-sur-Mer", slug: "camaret-sur-mer" },
+  { name: "Cancale", slug: "cancale" },
+  { name: "Cap Ferret", slug: "cap-ferret" },
+  { name: "Carteret", slug: "carteret" },
+  { name: "Cayeux-sur-mer", slug: "cayeux-sur-mer" },
+  { name: "Cherbourg", slug: "cherbourg" },
+  { name: "Concarneau", slug: "concarneau" },
+  { name: "Cordouan", slug: "cordouan" },
+  { name: "Courseulles-sur-Mer", slug: "courseulles-sur-mer" },
+  { name: "Dahouet", slug: "dahouet" },
+  { name: "Dieppe", slug: "dieppe" },
+  { name: "Dives-sur-Mer", slug: "dives-sur-mer" },
+  { name: "Diélette", slug: "dielette" },
+  { name: "Douarnenez", slug: "douarnenez" },
+  { name: "Dunkerque", slug: "dunkerque" },
+  { name: "Erquy", slug: "erquy" },
+  { name: "Fouesnant", slug: "fouesnant" },
+  { name: "Fromentine", slug: "fromentine" },
+  { name: "Fécamp", slug: "fecamp" },
+  { name: "Goury", slug: "goury" },
+  { name: "Grandcamp", slug: "grandcamp" },
+  { name: "Granville", slug: "granville" },
+  { name: "Gravelines", slug: "gravelines" },
+  { name: "Honfleur", slug: "honfleur" },
+  { name: "Houat", slug: "houat" },
+  { name: "Hoëdic", slug: "hoedic" },
+  { name: "L'Aber Benoît", slug: "l-aber-benoit" },
+  { name: "L'Aber Ildut - Lanildut", slug: "l-aber-ildut-lanildut" },
+  { name: "La Rochelle-Pallice", slug: "la-rochelle-pallice" },
+  { name: "La Trinité-sur-Mer", slug: "la-trinite-sur-mer" },
+  { name: "Lacanau", slug: "lacanau" },
+  { name: "Le Conquet", slug: "le-conquet" },
+  { name: "Le Croisic", slug: "le-croisic" },
+  { name: "Le Guilvinec", slug: "le-guilvinec" },
+  { name: "Le Havre", slug: "le-havre" },
+  { name: "Le Havre-Antifer", slug: "le-havre-antifer" },
+  { name: "Le Logeo", slug: "le-logeo" },
+  { name: "Le Pouldu", slug: "le-pouldu" },
+  { name: "Le Pouliguen", slug: "le-pouliguen" },
+  { name: "Le Tréport", slug: "le-treport" },
+  { name: "Les Héaux de Bréhat", slug: "les-heaux-de-brehat" },
+  { name: "Les Sables-d'Olonne", slug: "les-sables-d-olonne" },
+  { name: "Lesconil", slug: "lesconil" },
+  { name: "Locmariaquer", slug: "locmariaquer" },
+  { name: "Locquemeau", slug: "locquemeau" },
+  { name: "Locquirec", slug: "locquirec" },
+  { name: "Loctudy", slug: "loctudy" },
+  { name: "Lorient", slug: "lorient" },
+  { name: "Luc-sur-mer", slug: "luc-sur-mer" },
+  { name: "Mimizan", slug: "mimizan" },
+  { name: "Morgat", slug: "morgat" },
+  { name: "Noirmoutier (L'Herbaudière)", slug: "noirmoutier-l-herbaudiere" },
+  { name: "Omonville-la-Rogue", slug: "omonville-la-rogue" },
+  { name: "Ouistreham", slug: "ouistreham" },
+  { name: "Paimpol", slug: "paimpol" },
+  { name: "Pauillac", slug: "pauillac" },
+  { name: "Penfret (Îles de Glénan)", slug: "penfret-iles-de-glenan" },
+  { name: "Penmarc'h / Saint-Guénolé", slug: "penmarc-h-saint-guenole" },
+  { name: "Perros-Guirec", slug: "perros-guirec" },
+  { name: "Ploumanac'h", slug: "ploumanac-h" },
+  { name: "Pointe d'Agon", slug: "pointe-d-agon" },
+  { name: "Pointe de Gatseau", slug: "pointe-de-gatseau" },
+  { name: "Pointe de Grave (Port-Bloc)", slug: "pointe-de-grave-port-bloc" },
+  { name: "Pointe de Saint-Gildas", slug: "pointe-de-saint-gildas" },
+  { name: "Pornic", slug: "pornic" },
+  { name: "Pornichet", slug: "pornichet" },
+  { name: "Port Manec'h", slug: "port-manec-h" },
+  { name: "Port du Crouesty", slug: "port-du-crouesty" },
+  { name: "Port-Béni", slug: "port-beni" },
+  { name: "Port-Louis (Locmalo)", slug: "port-louis-locmalo" },
+  { name: "Port-Navalo", slug: "port-navalo" },
+  { name: "Port-en-Bessin", slug: "port-en-bessin" },
+  { name: "Portbail", slug: "portbail" },
+  { name: "Portsall", slug: "portsall" },
+  { name: "Pénerf", slug: "penerf" },
+  { name: "Quiberon (Port-Haliguen)", slug: "quiberon-port-haliguen" },
+  { name: "Quiberon (Port-Maria)", slug: "quiberon-port-maria" },
+  { name: "Quinéville", slug: "quineville" },
+  { name: "Richards", slug: "richards" },
+  { name: "Roscoff", slug: "roscoff" },
+  { name: "Royan", slug: "royan" },
+  { name: "Saint-Cast", slug: "saint-cast" },
+  { name: "Saint-Malo", slug: "saint-malo" },
+  { name: "Saint-Nazaire", slug: "saint-nazaire" },
+  { name: "Saint-Quay-Portrieux", slug: "saint-quay-portrieux" },
+  { name: "Saint-Vaast-la-Hougue", slug: "saint-vaast-la-hougue" },
+  { name: "Saint-Valery-en-Caux", slug: "saint-valery-en-caux" },
+  {
+    name: "Sainte-Marie-du-Mont (Utah Beach)",
+    slug: "sainte-marie-du-mont-utah-beach",
+  },
+  { name: "Surtainville", slug: "surtainville" },
+  { name: "Trez-Hir", slug: "trez-hir" },
+  { name: "Trouville / Deauville", slug: "trouville-deauville" },
+  { name: "Trébeurden", slug: "trebeurden" },
+  { name: "Tréguier", slug: "treguier" },
+  { name: "Tréhiguier", slug: "trehiguier" },
+  { name: "Vannes", slug: "vannes" },
+  { name: "Vauville", slug: "vauville" },
+  { name: "Vierville", slug: "vierville" },
+  { name: "Vieux-Boucau", slug: "vieux-boucau" },
+  { name: "Wissant", slug: "wissant" },
+  { name: "Étel", slug: "etel" },
+  { name: "Étretat", slug: "etretat" },
+  { name: "Île d'Oléron (La Cotinière)", slug: "ile-d-oleron-la-cotiniere" },
+  { name: "Île d'Yeu", slug: "ile-d-yeu" },
+  { name: "Île de Groix (Port-Tudy)", slug: "ile-de-groix-port-tudy" },
+  { name: "Île de Ré (Saint-Martin)", slug: "ile-de-re-saint-martin" },
+  { name: "Île des Ébihens", slug: "ile-des-ebihens" },
+  { name: "Îles Saint-Marcouf", slug: "iles-saint-marcouf" },
+];
 
 const API_TOKEN = "6644217faf20d111fb8d5b6a3acc2522";
 
-async function fetchTideData(portKey) {
-  const portInfo = PORTS_DATA[portKey];
+async function fetchTideData(portSlug) {
+  // On cherche le port par son slug dans le tableau
+  const portInfo = PORTS_DATA.find((p) => p.slug === portSlug);
   if (!portInfo) return;
 
   const today = new Date().toISOString().split("T")[0];
-  const cacheKey = `shom_v4_${portKey}_${today}`;
+  const cacheKey = `shom_v4_${portSlug}_${today}`;
   const cachedData = localStorage.getItem(cacheKey);
 
   if (cachedData) {
@@ -57,8 +181,7 @@ async function fetchTideData(portKey) {
   tideGrid.innerHTML = "";
 
   try {
-    // CORRECTION : On interroge l'API via les coordonnées GPS (lat & lon) du port
-    const url = `https://api-maree.fr/tide-extrema?lat=${portInfo.lat}&lon=${portInfo.lon}&from=${today}&to=${today}&tz=Europe/Paris&key=${API_TOKEN}`;
+    const url = `https://api-maree.fr/tide-extrema?site=${portInfo.slug}&from=${today}&to=${today}&tz=Europe/Paris&key=${API_TOKEN}`;
     const response = await fetch(url);
 
     if (!response.ok) throw new Error(`Erreur réseau : ${response.status}`);
@@ -77,87 +200,34 @@ async function fetchTideData(portKey) {
 
 // 4. Traitement et mise en forme des données reçues
 function processAndRenderData(dataObj) {
-  // L'API api-maree.fr stocke généralement son tableau dans la clé "data"
-  const marees = dataObj.data || [];
-
-  if (!Array.isArray(marees) || marees.length === 0) {
+  // On vérifie que les données et le tableau extrema existent pour le premier jour
+  if (!dataObj.data || dataObj.data.length === 0 || !dataObj.data[0].extrema) {
     console.warn("Aucun tableau de marées exploitable trouvé.");
     currentState.textContent = "Format de données inconnu ❌";
     return;
   }
 
   // Mise à jour de l'en-tête
-  currentState.textContent = "Données Officielles (SHOM) ⚓";
+  currentState.textContent = "Données Officielles ⚓";
   nextEvent.textContent = "Mise à jour automatique";
   tideGrid.innerHTML = "";
 
+  // On cible directement les événements de marées du jour ciblé
+  const horairesMaree = dataObj.data[0].extrema;
   let globalCoef = "--";
 
-  marees.slice(0, 4).forEach((item) => {
-    let timeStr = "--:--";
-    let heightNum = null;
-    let isHigh = false;
+  horairesMaree.slice(0, 4).forEach((item) => {
+    // Le JSON fournit directement ces clés
+    const timeStr = item.time || "--:--";
+    const heightNum = item.height !== undefined ? item.height : null;
 
-    // Fonction récursive pour extraire les données imbriquées
-    function extractDeep(obj) {
-      if (!obj || typeof obj !== "object") return;
+    // PM = Pleine Mer, BM = Basse Mer
+    const isHigh = item.type === "PM";
 
-      for (const [key, val] of Object.entries(obj)) {
-        if (typeof val === "object") {
-          // Si la valeur est un autre objet, on fouille à l'intérieur
-          extractDeep(val);
-        } else {
-          const k = String(key).toLowerCase();
-          const v = String(val).toLowerCase();
-
-          // Extraction de l'heure (format Date ISO)
-          if (
-            timeStr === "--:--" &&
-            (k.includes("time") ||
-              k.includes("date") ||
-              k === "datetime" ||
-              v.includes("t"))
-          ) {
-            const d = new Date(val);
-            if (!isNaN(d.getTime())) {
-              timeStr = d.toLocaleTimeString("fr-FR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              });
-            }
-          }
-          // Extraction de la hauteur de l'eau
-          if (
-            heightNum === null &&
-            (k.includes("height") ||
-              k.includes("hauteur") ||
-              k === "v" ||
-              k === "value")
-          ) {
-            const parsed = parseFloat(String(val).replace(",", "."));
-            if (!isNaN(parsed) && parsed >= -5 && parsed <= 20) {
-              heightNum = parsed;
-            }
-          }
-          // Détection de l'état (Pleine mer / Basse mer)
-          if (
-            v.includes("high") ||
-            v.includes("pm") ||
-            v.includes("pleine") ||
-            v.includes("haute")
-          ) {
-            isHigh = true;
-          }
-          // Extraction du coefficient
-          if (k.includes("coef") && val !== null && val !== "") {
-            globalCoef = val;
-          }
-        }
-      }
+    // Seules les pleines mers ont un coefficient dans ce JSON
+    if (item.coef !== undefined) {
+      globalCoef = item.coef;
     }
-
-    // Lancement de la fouille sur l'élément en cours
-    extractDeep(item);
 
     // Préparation de l'affichage
     const icon = isHigh ? "🏔️" : "🌊";

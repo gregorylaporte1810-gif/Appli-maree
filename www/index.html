@@ -26,39 +26,10 @@
     <!-- En-tête : Sélection du port -->
     <header class="app-header">
       <h1>🌊 Météo des Marées</h1>
-      <div class="port-selector">
-        <label for="port-select">Port :</label>
-        <select id="port-select">
-          <!-- Manche & Mer du Nord -->
-          <optgroup label="Manche & Nord">
-            <option value="dunkerque">Dunkerque</option>
-            <option value="calais">Calais</option>
-            <option value="le-havre">Le Havre</option>
-            <option value="cherbourg">Cherbourg</option>
-            <option value="granville">Granville</option>
-          </optgroup>
-
-          <!-- Bretagne -->
-          <optgroup label="Bretagne">
-            <option value="saint-malo">Saint-Malo</option>
-            <option value="roscoff">Roscoff</option>
-            <option value="brest">Brest</option>
-            <option value="concarneau">Concarneau</option>
-            <option value="lorient">Lorient</option>
-            <option value="vannes">Vannes / Golfe</option>
-          </optgroup>
-
-          <!-- Côte Atlantique -->
-          <optgroup label="Atlantique">
-            <option value="saint-nazaire">Saint-Nazaire</option>
-            <option value="les-sables-dolonne">Les Sables-d'Olonne</option>
-            <option value="la-rochelle">La Rochelle</option>
-            <option value="royan">Royan</option>
-            <option value="arcachon">Arcachon</option>
-            <option value="biarritz">Biarritz</option>
-          </optgroup>
-        </select>
-        <button id="geo-btn" title="Détecter le port le plus proche">📍</button>
+      <select id="port-select">
+        <!-- Les ports seront injectés automatiquement par JavaScript -->
+      </select>
+      <button id="geo-btn" title="Détecter le port le plus proche">📍</button>
       </div>
     </header>
 
