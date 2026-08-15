@@ -5,9 +5,6 @@ const currentState = document.getElementById("current-state");
 const nextEvent = document.getElementById("next-event");
 const tideGrid = document.getElementById("tide-grid");
 
-// Clé API WorldTides (Créer un compte gratuit sur worldtides.info pour avoir ta clé)
-const API_KEY = "1de07a05-3ca5-4fe3-bb2c-4d6474788cd8";
-
 // 2. Base des coordonnées GPS des ports
 const PORTS_COORDINATES = {
   // Manche & Nord
@@ -38,26 +35,24 @@ async function fetchTideData(portKey) {
   const coords = PORTS_COORDINATES[portKey];
   if (!coords) return;
 
-  // 1. Clé unique de cache basée sur le port et la date du jour (ex: "marees_saint-malo_2026-08-15")
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
   const cacheKey = `marees_${portKey}_${today}`;
-
-  // 2. Vérification si les données du jour existent déjà dans le navigateur
   const cachedData = localStorage.getItem(cacheKey);
+
   if (cachedData) {
-    console.log("Données chargées depuis le cache local (0 crédit consommé !)");
+    console.log("Données chargées depuis le cache local (0 appel réseau !)");
     processAndRenderData(JSON.parse(cachedData));
     return;
   }
 
   currentState.textContent = "Mise à jour en direct… ⏳";
-  nextEvent.textContent = "Connexion à WorldTides";
+  nextEvent.textContent = "Connexion à Open-Meteo...";
   coefValue.textContent = "--";
   tideGrid.innerHTML = "";
 
   try {
-    // 3. Appel de l'API si le cache est vide pour aujourd'hui
-    const url = `https://www.worldtides.info/api/v3?heights&extremes&lat=${coords.lat}&lon=${coords.lon}&key=${API_KEY}&datum=LAT`;
+    // Appel de l'API Marine d'Open-Meteo : 100% gratuit, 0 clé requise
+    const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${coords.lat}&longitude=${coords.lon}&hourly=sea_level_height_msl&timezone=Europe%2FParis`;
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -66,15 +61,57 @@ async function fetchTideData(portKey) {
 
     const data = await response.json();
 
-    // 4. Sauvegarde de la réponse dans le LocalStorage pour toute la journée
-    localStorage.setItem(cacheKey, JSON.stringify(data));
+    // On délègue l'extraction des pics et des creux à notre algorithme
+    const extremes = extractExtremes(data.hourly);
 
-    processAndRenderData(data);
+    // On reformate l'objet pour qu'il s'injecte parfaitement dans ta fonction processAndRenderData existante
+    const formattedData = { extremes };
+
+    localStorage.setItem(cacheKey, JSON.stringify(formattedData));
+    processAndRenderData(formattedData);
   } catch (error) {
     console.error("Erreur API :", error);
     currentState.textContent = "Erreur de connexion ❌";
-    nextEvent.textContent = "Vérifie l'activation de ton e-mail WorldTides";
+    nextEvent.textContent = "Vérifie ta connexion internet";
   }
+}
+
+// Fonction pour analyser la courbe horaire et trouver les marées du jour
+function extractExtremes(hourly) {
+  const heights = hourly.sea_level_height_msl;
+  const times = hourly.time;
+  const extremes = [];
+
+  // On isole la date du jour (format YYYY-MM-DD)
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  // On boucle sur les données en ignorant la première et la dernière heure pour comparer
+  for (let i = 1; i < heights.length - 1; i++) {
+    // On ignore les marées qui ne correspondent pas à la date d'aujourd'hui
+    if (!times[i].startsWith(todayStr)) continue;
+
+    const prev = heights[i - 1];
+    const curr = heights[i];
+    const next = heights[i + 1];
+
+    // Si la valeur actuelle est supérieure à la précédente ET à la suivante -> C'est un pic (Pleine Mer)
+    if (curr > prev && curr > next) {
+      extremes.push({
+        type: "High",
+        dt: new Date(times[i]).getTime() / 1000,
+        height: curr,
+      });
+    }
+    // Si la valeur actuelle est inférieure -> C'est un creux (Basse Mer)
+    else if (curr < prev && curr < next) {
+      extremes.push({
+        type: "Low",
+        dt: new Date(times[i]).getTime() / 1000,
+        height: curr,
+      });
+    }
+  }
+  return extremes;
 }
 
 // 4. Traitement et mise en forme des données reçues
@@ -149,12 +186,14 @@ portSelect.addEventListener("change", (e) => {
 // Formule de Haversine pour calculer la distance entre deux points GPS (en km)
 function getDistanceInKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -175,9 +214,9 @@ function findNearestPort(userLat, userLon) {
 }
 
 // Gestion du clic sur le bouton de géolocalisation
-const geoBtn = document.getElementById('geo-btn');
+const geoBtn = document.getElementById("geo-btn");
 
-geoBtn.addEventListener('click', () => {
+geoBtn.addEventListener("click", () => {
   if (!navigator.geolocation) {
     alert("La géolocalisation n'est pas supportée par ton navigateur.");
     return;
@@ -192,7 +231,7 @@ geoBtn.addEventListener('click', () => {
 
       if (nearestPort) {
         portSelect.value = nearestPort;
-        localStorage.setItem('selectedPort', nearestPort);
+        localStorage.setItem("selectedPort", nearestPort);
         fetchTideData(nearestPort);
       }
       geoBtn.textContent = "📍";
@@ -201,6 +240,6 @@ geoBtn.addEventListener('click', () => {
       console.error("Erreur géolocalisation :", error);
       alert("Impossible d'accéder à ta position GPS.");
       geoBtn.textContent = "📍";
-    }
+    },
   );
 });
