@@ -21,11 +21,9 @@ body {
   min-height: 100vh;
   margin: 0;
   display: flex;
-  justify-content: center; /* Centre horizontalement */
-  align-items: center;     /* Centre verticalement */
-  padding: 20px 0;         /* Évite que ça colle tout en haut/bas sur les petits écrans */
-  box-sizing: border-box;
-  background-color: #0c2340; /* Ta couleur de fond */
+  justify-content: center;
+  align-items: center;
+  background-color: #0c2340;
 }
 
 /* --- CONTENEUR PRINCIPAL (BOÎTE BLANCHE AJUSTÉE) --- */
@@ -250,9 +248,10 @@ body {
   .port-selector {
     width: auto;
   }
-  .tide-container {
-    width: 92%;
-  max-width: 420px;
+  .tide-container { /* Remplace par le nom exact de ta classe principale */
+  width: 95%;          /* Occupe presque toute la largeur (95% de l'écran) */
+  max-width: 550px;    /* Permet d'élargir le bloc par rapport à avant */
+  padding: 20px;       /* Ajoute un peu d'air à l'intérieur du bloc */
   box-sizing: border-box;
-  }
+}
 }
