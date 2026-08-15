@@ -39,7 +39,7 @@ async function fetchTideData(portKey) {
   if (!portInfo) return;
 
   const today = new Date().toISOString().split("T")[0];
-  const cacheKey = `marees_${portKey}_${today}`;
+  const cacheKey = `shom_marees_${portKey}_${today}`;
   const cachedData = localStorage.getItem(cacheKey);
 
   if (cachedData) {
