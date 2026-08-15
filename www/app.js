@@ -5,30 +5,35 @@ const currentState = document.getElementById("current-state");
 const nextEvent = document.getElementById("next-event");
 const tideGrid = document.getElementById("tide-grid");
 
-// 2. Base des données des ports (Coordonnées pour le GPS + ID SHOM pour l'API)
+// 2. Base des données des ports avec le slug exact attendu par l'API
 const PORTS_DATA = {
   // Manche & Nord
-  dunkerque: { id: "8", lat: 51.034, lon: 2.376 },
-  calais: { id: "9", lat: 50.958, lon: 1.859 },
-  "le-havre": { id: "16", lat: 49.49, lon: 0.1 },
-  cherbourg: { id: "29", lat: 49.63, lon: -1.62 },
-  granville: { id: "40", lat: 48.83, lon: -1.6 },
+  dunkerque: { id: "8", slug: "dunkerque", lat: 51.034, lon: 2.376 },
+  calais: { id: "9", slug: "calais", lat: 50.958, lon: 1.859 },
+  "le-havre": { id: "16", slug: "le-havre", lat: 49.49, lon: 0.1 },
+  cherbourg: { id: "29", slug: "cherbourg", lat: 49.63, lon: -1.62 },
+  granville: { id: "40", slug: "granville", lat: 48.83, lon: -1.6 },
 
   // Bretagne
-  "saint-malo": { id: "52", lat: 48.65, lon: -2.02 },
-  roscoff: { id: "62", lat: 48.72, lon: -3.98 },
-  brest: { id: "71", lat: 48.39, lon: -4.48 },
-  concarneau: { id: "81", lat: 47.87, lon: -3.91 },
-  lorient: { id: "84", lat: 47.75, lon: -3.36 },
-  vannes: { id: "92", lat: 47.65, lon: -2.75 },
+  "saint-malo": { id: "52", slug: "saint-malo", lat: 48.65, lon: -2.02 },
+  roscoff: { id: "62", slug: "roscoff", lat: 48.72, lon: -3.98 },
+  brest: { id: "71", slug: "brest", lat: 48.39, lon: -4.48 },
+  concarneau: { id: "81", slug: "concarneau", lat: 47.87, lon: -3.91 },
+  lorient: { id: "84", slug: "lorient", lat: 47.75, lon: -3.36 },
+  vannes: { id: "92", slug: "vannes", lat: 47.65, lon: -2.75 },
 
   // Atlantique
-  "saint-nazaire": { id: "104", lat: 47.27, lon: -2.21 },
-  "les-sables-dolonne": { id: "114", lat: 46.49, lon: -1.78 },
-  "la-rochelle": { id: "119", lat: 46.16, lon: -1.15 },
-  royan: { id: "124", lat: 45.62, lon: -1.03 },
-  arcachon: { id: "128", lat: 44.66, lon: -1.16 },
-  biarritz: { id: "136", lat: 43.48, lon: -1.56 },
+  "saint-nazaire": { id: "104", slug: "saint-nazaire", lat: 47.27, lon: -2.21 },
+  "les-sables-dolonne": {
+    id: "114",
+    slug: "les-sables-dolonne",
+    lat: 46.49,
+    lon: -1.78,
+  },
+  "la-rochelle": { id: "119", slug: "la-rochelle", lat: 46.16, lon: -1.15 },
+  royan: { id: "124", slug: "royan", lat: 45.62, lon: -1.03 },
+  arcachon: { id: "128", slug: "arcachon", lat: 44.66, lon: -1.16 },
+  biarritz: { id: "136", slug: "biarritz", lat: 43.48, lon: -1.56 },
 };
 
 const API_TOKEN = "6644217faf20d111fb8d5b6a3acc2522";
@@ -52,8 +57,8 @@ async function fetchTideData(portKey) {
   tideGrid.innerHTML = "";
 
   try {
-    // CORRECTION : On utilise portInfo.id (l'identifiant officiel SHOM) au lieu de portKey
-    const url = `https://api-maree.fr/tide-extrema?site=${portInfo.id}&from=${today}&to=${today}&tz=Europe/Paris&key=${API_TOKEN}`;
+    // On utilise portInfo.slug pour l'appel API
+    const url = `https://api-maree.fr/tide-extrema?site=${portInfo.slug}&from=${today}&to=${today}&tz=Europe/Paris&key=${API_TOKEN}`;
     const response = await fetch(url);
 
     if (!response.ok) throw new Error(`Erreur réseau : ${response.status}`);
