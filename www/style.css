@@ -19,15 +19,13 @@
 /* --- BODY & ARRIÈRE-PLAN --- */
 body {
   min-height: 100vh;
-  min-height: 100dvh;
-  width: 100%;
-  background: linear-gradient(160deg, #0b192c 0%, #1e3e62 50%, #0d1b2a 100%);
-  color: var(--text-main);
+  margin: 0;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  overflow-x: hidden;
-  padding: 16px; /* Marges uniformes tout autour */
+  justify-content: center; /* Centre horizontalement */
+  align-items: center;     /* Centre verticalement */
+  padding: 20px 0;         /* Évite que ça colle tout en haut/bas sur les petits écrans */
+  box-sizing: border-box;
+  background-color: #0c2340; /* Ta couleur de fond */
 }
 
 /* --- CONTENEUR PRINCIPAL (BOÎTE BLANCHE AJUSTÉE) --- */
@@ -251,5 +249,10 @@ body {
 
   .port-selector {
     width: auto;
+  }
+  .tide-container {
+    width: 92%;
+  max-width: 420px;
+  box-sizing: border-box;
   }
 }
