@@ -70,112 +70,110 @@ async function fetchTideData(portKey) {
 }
 
 // 4. Traitement et mise en forme des données reçues
-function processAndRenderData(data) {
-  console.log("Structure brute reçue :", data);
+function processAndRenderData(dataObj) {
+  // L'API api-maree.fr stocke généralement son tableau dans la clé "data"
+  const marees = dataObj.data || [];
 
-  // Détection universelle : trouve automatiquement n'importe quel tableau dans l'objet JSON
-  let marees = Array.isArray(data)
-    ? data
-    : Object.values(data).find((val) => Array.isArray(val));
-
-  if (!marees || !Array.isArray(marees) || marees.length === 0) {
-    console.warn("Aucun tableau de marées trouvé dans :", data);
+  if (!Array.isArray(marees) || marees.length === 0) {
+    console.warn("Aucun tableau de marées exploitable trouvé.");
     currentState.textContent = "Format de données inconnu ❌";
     return;
   }
 
-  // Fonction utilitaire pour nettoyer et convertir proprement les nombres (gère les virgules françaises)
-  function parseVal(val) {
-    if (typeof val === "number") return val;
-    if (typeof val === "string") {
-      const cleaned = val.replace(",", ".").replace(/[^\d.-]/g, "");
-      const num = parseFloat(cleaned);
-      return isNaN(num) ? null : num;
-    }
-    return null;
-  }
-
-  // 1. Récupération du coefficient officiel du SHOM
-  let coef = "--";
-  const pleineMerCoef =
-    marees.find((m) => m.coefficient || m.coef || m.coeft) || data;
-  const rawCoef =
-    pleineMerCoef.coefficient ?? pleineMerCoef.coef ?? pleineMerCoef.coeft;
-  if (rawCoef != null) {
-    coef = parseVal(rawCoef) ?? "--";
-  }
-  coefValue.textContent = coef;
-
-  // 2. En-tête
+  // Mise à jour de l'en-tête
   currentState.textContent = "Données Officielles (SHOM) ⚓";
   nextEvent.textContent = "Mise à jour automatique";
-
-  // 3. Affichage des cartes de la journée
   tideGrid.innerHTML = "";
-  marees.slice(0, 4).forEach((item) => {
-    // Détection universelle de l'état (Pleine mer / Basse mer) via le texte global de l'objet
-    const itemString = Object.values(item).join(" ").toLowerCase();
-    const isHigh =
-      itemString.includes("plein") ||
-      itemString.includes("high") ||
-      itemString.includes("pm");
 
+  let globalCoef = "--";
+
+  marees.slice(0, 4).forEach((item) => {
+    let timeStr = "--:--";
+    let heightNum = null;
+    let isHigh = false;
+
+    // Fonction récursive pour extraire les données imbriquées
+    function extractDeep(obj) {
+      if (!obj || typeof obj !== "object") return;
+
+      for (const [key, val] of Object.entries(obj)) {
+        if (typeof val === "object") {
+          // Si la valeur est un autre objet, on fouille à l'intérieur
+          extractDeep(val);
+        } else {
+          const k = String(key).toLowerCase();
+          const v = String(val).toLowerCase();
+
+          // Extraction de l'heure (format Date ISO)
+          if (
+            timeStr === "--:--" &&
+            (k.includes("time") ||
+              k.includes("date") ||
+              k === "datetime" ||
+              v.includes("t"))
+          ) {
+            const d = new Date(val);
+            if (!isNaN(d.getTime())) {
+              timeStr = d.toLocaleTimeString("fr-FR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+            }
+          }
+          // Extraction de la hauteur de l'eau
+          if (
+            heightNum === null &&
+            (k.includes("height") ||
+              k.includes("hauteur") ||
+              k === "v" ||
+              k === "value")
+          ) {
+            const parsed = parseFloat(String(val).replace(",", "."));
+            if (!isNaN(parsed) && parsed >= -5 && parsed <= 20) {
+              heightNum = parsed;
+            }
+          }
+          // Détection de l'état (Pleine mer / Basse mer)
+          if (
+            v.includes("high") ||
+            v.includes("pm") ||
+            v.includes("pleine") ||
+            v.includes("haute")
+          ) {
+            isHigh = true;
+          }
+          // Extraction du coefficient
+          if (k.includes("coef") && val !== null && val !== "") {
+            globalCoef = val;
+          }
+        }
+      }
+    }
+
+    // Lancement de la fouille sur l'élément en cours
+    extractDeep(item);
+
+    // Préparation de l'affichage
     const icon = isHigh ? "🏔️" : "🌊";
     const title = isHigh ? "Pleine Mer" : "Basse Mer";
-
-    // Extraction intelligente de l'heure
-    let time = "--:--";
-    for (const val of Object.values(item)) {
-      if (typeof val === "string" && val.includes(":")) {
-        if (val.includes("T")) {
-          const d = new Date(val);
-          if (!isNaN(d.getTime())) {
-            time = d.toLocaleTimeString("fr-FR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            break;
-          }
-        } else if (val.length >= 5) {
-          time = val.slice(0, 5);
-          break;
-        }
-      }
-    }
-
-    // Recherche et conversion sécurisée de la hauteur
-    let heightNum = null;
-    const explicitHeight =
-      item.hauteur ?? item.height ?? item.valeur ?? item.value ?? item.niveau;
-    if (explicitHeight !== undefined) {
-      heightNum = parseVal(explicitHeight);
-    }
-
-    if (heightNum === null) {
-      // Parcourt toutes les propriétés pour trouver un nombre cohérent pour une hauteur d'eau (-6m à 16m)
-      for (const val of Object.values(item)) {
-        const p = parseVal(val);
-        if (p !== null && p !== Number(coef) && p >= -6 && p <= 16) {
-          heightNum = p;
-          break;
-        }
-      }
-    }
-
     const height = heightNum !== null ? heightNum.toFixed(2) + "m" : "--m";
 
+    // Création de la carte HTML
     const card = document.createElement("div");
     card.classList.add("tide-card");
     card.innerHTML = `
       <span class="tide-icon">${icon}</span>
       <div class="tide-info">
         <span class="tide-type">${title}</span>
-        <span class="tide-time">${time}</span>
+        <span class="tide-time">${timeStr}</span>
         <span class="tide-height">${height}</span>
       </div>
     `;
     tideGrid.appendChild(card);
   });
+
+  // Mise à jour finale du DOM pour le coefficient
+  coefValue.textContent = globalCoef;
 }
 
 // 5. Initialisation & Écouteurs
