@@ -75,23 +75,33 @@ async function fetchTideData(portKey) {
   }
 }
 // 4. Traitement et mise en forme des données reçues
-// 4. Traitement et mise en forme des données reçues
 function processAndRenderData(data) {
-  // Détection automatique du tableau dans le JSON (qu'il s'appelle extrema, data, etc.)
-  const marees = Array.isArray(data) 
-    ? data 
-    : (data.extremas || data.extremes || data.data || Object.values(data).find(val => Array.isArray(val)));
+  // Détection automatique du tableau de données dans le JSON
+  const marees = Array.isArray(data)
+    ? data
+    : data.extremas ||
+      data.extremes ||
+      data.data ||
+      data.tides ||
+      Object.values(data).find((val) => Array.isArray(val));
 
   if (!marees || marees.length === 0) {
     console.warn("Aucun tableau de marées trouvé dans l'objet :", data);
     return;
   }
 
+  // Affichage du premier élément dans la console pour inspection si besoin
+  console.log("Exemple d'objet marée reçu :", marees[0]);
+
   // 1. Récupération du coefficient officiel du SHOM
   const pleineMer = marees.find(
-    (m) => m.coefficient != null && m.coefficient > 0,
+    (m) =>
+      (m.coefficient != null && m.coefficient > 0) ||
+      (m.coef != null && m.coef > 0),
   );
-  coefValue.textContent = pleineMer ? pleineMer.coefficient : "--";
+  coefValue.textContent = pleineMer
+    ? pleineMer.coefficient || pleineMer.coef
+    : "--";
 
   // 2. En-tête
   currentState.textContent = "Données Officielles (SHOM) ⚓";
@@ -100,19 +110,39 @@ function processAndRenderData(data) {
   // 3. Affichage des 4 cartes de la journée
   tideGrid.innerHTML = "";
   marees.slice(0, 4).forEach((item) => {
-    // Vérifie si l'état indique une pleine mer (souvent "Pleine mer" ou "High")
-    const isHigh = item.etat === "Pleine mer" || item.type === "High";
+    // Détection dynamique du type (Pleine mer / Basse mer)
+    const etatStr = String(
+      item.etat || item.type || item.state || "",
+    ).toLowerCase();
+    const isHigh =
+      etatStr.includes("pleine") ||
+      etatStr.includes("high") ||
+      etatStr.includes("plein");
+
     const icon = isHigh ? "🏔️" : "🌊";
     const title = isHigh ? "Pleine Mer" : "Basse Mer";
 
-    // Formatage de l'heure exacte
-    const time = new Date(item.date || item.dt * 1000).toLocaleTimeString("fr-FR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    // Récupération dynamique de la date/heure
+    const rawDate = item.date || item.time || item.datetime || item.dt;
+    const time = rawDate
+      ? typeof rawDate === "number"
+        ? new Date(rawDate * 1000).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : new Date(rawDate).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+      : "--:--";
 
-    // Formatage de la hauteur positive
-    const height = parseFloat(item.hauteur || item.height).toFixed(2) + "m";
+    // Récupération dynamique de la hauteur avec test de plusieurs clés possibles
+    const rawHeight =
+      item.hauteur ?? item.height ?? item.valeur ?? item.value ?? item.niveau;
+    const height =
+      rawHeight !== undefined && !isNaN(rawHeight)
+        ? Number(rawHeight).toFixed(2) + "m"
+        : "--m";
 
     const card = document.createElement("div");
     card.classList.add("tide-card");
@@ -162,7 +192,7 @@ function findNearestPort(userLat, userLon) {
   let minDistance = Infinity;
 
   // Remplacer PORTS_COORDINATES par PORTS_DATA
-for (const [key, coords] of Object.entries(PORTS_DATA)) {
+  for (const [key, coords] of Object.entries(PORTS_DATA)) {
     const dist = getDistanceInKm(userLat, userLon, coords.lat, coords.lon);
     if (dist < minDistance) {
       minDistance = dist;
