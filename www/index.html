@@ -51,8 +51,20 @@
       <div id="tide-grid" class="tide-grid">
         <!-- Les cartes Pleine Mer / basse Mer seront injectées par JavaScript -->
       </div>
+      <button id="week-btn" class="week-btn">📅 Voir les marées de la semaine</button>
     </section>
   </main>
+
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-content">
+      <button id="close-modal" class="close-modal">✖</button>
+      <h2>Marées de la semaine</h2>
+      <!-- Conteneur pour l'alerte de grandes marées -->
+      <div id="alert-container"></div>
+      <!-- Conteneur pour la liste des marées -->
+      <div id="week-content" class="week-content"></div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

@@ -511,3 +511,139 @@ geoBtn.addEventListener("click", () => {
     },
   );
 });
+
+// --- MODAL & MARÉES DE LA SEMAINE ---
+
+// 1. Récupération des nouveaux éléments du DOM
+const weekBtn = document.getElementById("week-btn");
+const modalOverlay = document.getElementById("modal-overlay");
+const closeModal = document.getElementById("close-modal");
+const weekContent = document.getElementById("week-content");
+const alertContainer = document.getElementById("alert-container");
+
+// 2. Gestion de l'ouverture et fermeture
+weekBtn.addEventListener("click", () => {
+  modalOverlay.classList.add("active");
+  fetchWeekData(portSelect.value); // Lance la recherche pour le port actuel
+});
+
+closeModal.addEventListener("click", () => {
+  modalOverlay.classList.remove("active");
+});
+
+// Fermer le modal si on clique en dehors de la boîte
+modalOverlay.addEventListener("click", (e) => {
+  if (e.target === modalOverlay) {
+    modalOverlay.classList.remove("active");
+  }
+});
+
+// 3. Récupération des données pour 7 jours
+async function fetchWeekData(portSlug) {
+  weekContent.innerHTML = "<p style='text-align:center;'>Calcul des marées en cours... ⏳</p>";
+  alertContainer.innerHTML = "";
+
+  // CORRECTION 1 : PORTS_DATA est un tableau, on utilise .find()
+  const portInfo = PORTS_DATA.find((p) => p.slug === portSlug);
+  if (!portInfo) {
+    weekContent.innerHTML = "<p style='color:red;'>Port introuvable.</p>";
+    return;
+  }
+
+  // Calcul des dates (Aujourd'hui -> +7 jours)
+  const dateObj = new Date();
+  const today = dateObj.toISOString().split("T")[0];
+  dateObj.setDate(dateObj.getDate() + 7);
+  const nextWeek = dateObj.toISOString().split("T")[0];
+
+  const cacheKey = `shom_week_${portSlug}_${today}`;
+  const cachedData = localStorage.getItem(cacheKey);
+
+  if (cachedData) {
+    renderWeekData(JSON.parse(cachedData));
+    return;
+  }
+
+  try {
+    const url = `https://api-maree.fr/tide-extrema?site=${portInfo.slug}&from=${today}&to=${nextWeek}&tz=Europe/Paris&key=${API_TOKEN}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) throw new Error("Erreur réseau");
+    
+    const data = await response.json();
+    localStorage.setItem(cacheKey, JSON.stringify(data));
+    renderWeekData(data);
+  } catch (error) {
+    console.error(error);
+    weekContent.innerHTML = "<p style='color:red;'>Erreur lors du chargement des prévisions.</p>";
+  }
+}
+
+// 4. Affichage et analyse des grandes marées
+function renderWeekData(dataObj) {
+  // CORRECTION 2 : Adaptation au nouveau format structuré (dataObj.data)
+  if (!dataObj.data || dataObj.data.length === 0) {
+    weekContent.innerHTML = "<p>Données non disponibles.</p>";
+    return;
+  }
+
+  let maxCoef = 0;
+  const daysMap = {};
+  
+  // Date de référence pour incrémenter les jours proprement
+  const currentDate = new Date();
+
+  // On boucle sur chaque jour renvoyé par l'API
+  dataObj.data.forEach((dayData, index) => {
+    if (!dayData.extrema) return;
+
+    // Détermination de la date de ce bloc de marées
+    const dateObj = new Date(currentDate);
+    dateObj.setDate(currentDate.getDate() + index);
+    const dayKey = dateObj.toLocaleDateString("fr-FR", { weekday: 'short', day: 'numeric', month: 'short' });
+
+    // Analyse des marées de la journée
+    dayData.extrema.forEach(item => {
+      const timeStr = item.time || "--:--";
+      const isHigh = item.type === "PM";
+      const icon = isHigh ? "🏔️" : "🌊";
+      const heightStr = item.height !== undefined ? item.height.toFixed(2) + "m" : "";
+      
+      let coefNum = null;
+      if (item.coef !== undefined) {
+         coefNum = item.coef;
+         if (coefNum > maxCoef) maxCoef = coefNum;
+      }
+
+      if (!daysMap[dayKey]) daysMap[dayKey] = [];
+      daysMap[dayKey].push(`
+        <div class="week-tides-row">
+          <span>${icon} ${timeStr}</span>
+          <span>${heightStr} ${coefNum ? `(Coef: <b>${coefNum}</b>)` : ""}</span>
+        </div>
+      `);
+    });
+  });
+
+  // Affichage de l'alerte si grandes marées (Coef >= 90)
+  if (maxCoef >= 90) {
+    alertContainer.innerHTML = `
+      <div class="alert-high-tide">
+        ⚠️ <span>Alerte Grandes Marées cette semaine ! (Max: coef ${maxCoef})</span>
+      </div>
+    `;
+  }
+
+  // Génération du HTML final de la liste
+  let html = "";
+  for (const [day, tidesList] of Object.entries(daysMap)) {
+    html += `
+      <div class="week-day">
+        <div class="week-date">${day.charAt(0).toUpperCase() + day.slice(1)}</div>
+        ${tidesList.join("")}
+      </div>
+    `;
+  }
+  
+  weekContent.innerHTML = html;
+}
